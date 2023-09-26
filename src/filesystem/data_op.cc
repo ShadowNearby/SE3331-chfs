@@ -105,7 +105,6 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
       //    You may use function `get_or_insert_indirect_block`
       //    in the case of indirect block.
       UNIMPLEMENTED();
-
     }
 
   } else {
@@ -120,7 +119,6 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
 
         // TODO: Free the indirect extra block.
         UNIMPLEMENTED();
-
       }
     }
 
@@ -163,7 +161,6 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
 
         // TODO: Implement getting block id of current indirect block.
         UNIMPLEMENTED();
-
       }
 
       // TODO: Write to current block.
@@ -245,7 +242,7 @@ auto FileOperation::read_file(inode_id_t id) -> ChfsResult<std::vector<u8>> {
 
     // TODO: Read from current block and store to `content`.
     UNIMPLEMENTED();
-    
+
     read_sz += sz;
   }
 

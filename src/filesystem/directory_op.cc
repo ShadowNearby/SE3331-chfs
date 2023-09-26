@@ -43,7 +43,7 @@ auto append_to_directory(std::string src, std::string filename, inode_id_t id)
   // TODO: Implement this function.
   //       Append the new directory entry to `src`.
   UNIMPLEMENTED();
-  
+
   return src;
 }
 
@@ -52,7 +52,6 @@ void parse_directory(std::string &src, std::list<DirectoryEntry> &list) {
 
   // TODO: Implement this function.
   UNIMPLEMENTED();
-
 }
 
 // {Your code here}
@@ -72,7 +71,7 @@ auto rm_from_directory(std::string src, std::string filename) -> std::string {
  */
 auto read_directory(FileOperation *fs, inode_id_t id,
                     std::list<DirectoryEntry> &list) -> ChfsNullResult {
-  
+
   // TODO: Implement this function.
   UNIMPLEMENTED();
 
@@ -108,11 +107,11 @@ auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type)
 auto FileOperation::unlink(inode_id_t parent, const char *name)
     -> ChfsNullResult {
 
-  // TODO: 
+  // TODO:
   // 1. Remove the file, you can use the function `remove_file`
   // 2. Remove the entry from the directory.
   UNIMPLEMENTED();
-  
+
   return KNullOk;
 }
 
