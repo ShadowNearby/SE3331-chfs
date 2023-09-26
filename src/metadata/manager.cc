@@ -99,7 +99,7 @@ auto InodeManager::allocate_inode(InodeType type, block_id_t bid)
       node.flush_to_buffer(buffer.data());
       bm->write_block(bid, buffer.data());
       auto logic_idx = RAW_2_LOGIC(free_idx.value());
-      set_table(logic_idx, bid);
+      set_table(free_idx.value(), bid);
       // 1. Initialize the inode with the given type.
       // 2. Setup the inode table.
       // 3. Return the id of the allocated inode.
@@ -134,8 +134,9 @@ auto InodeManager::set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult {
 auto InodeManager::get(inode_id_t id) -> ChfsResult<block_id_t> {
   block_id_t res_block_id = 0;
   auto inode_per_block = bm->block_size() / sizeof(block_id_t);
-  auto inode_table_block = id / inode_per_block;
-  auto inode_table_block_index = LOGIC_2_RAW(id % inode_per_block);
+  auto raw_id = LOGIC_2_RAW(id);
+  auto inode_table_block = raw_id / inode_per_block;
+  auto inode_table_block_index = raw_id % inode_table_block;
   std::vector<uint8_t> buffer(bm->block_size());
   bm->read_block(inode_table_block + 1, buffer.data());
   res_block_id = *(block_id_t *)(buffer.data() +

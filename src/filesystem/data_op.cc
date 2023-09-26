@@ -8,15 +8,23 @@ namespace chfs {
 auto FileOperation::alloc_inode(InodeType type) -> ChfsResult<inode_id_t> {
   inode_id_t inode_id = static_cast<inode_id_t>(0);
   auto inode_res = ChfsResult<inode_id_t>(inode_id);
-
-  // TODO:
+  auto block_id_res = block_allocator_->allocate();
+  if (block_id_res.is_err()) {
+    return ChfsResult<inode_id_t>{block_id_res.unwrap_error()};
+  }
+  block_id_t block_id = block_id_res.unwrap();
+  inode_res = inode_manager_->allocate_inode(type, block_id);
+  if (inode_res.is_err()) {
+    return ChfsResult<inode_id_t>{inode_res.unwrap_error()};
+  }
+  inode_id = inode_res.unwrap();
+  //        std::vector<uint8_t> buffer(block_manager_->block_size());
   // 1. Allocate a block for the inode.
   // 2. Allocate an inode.
   // 3. Initialize the inode block
   //    and write the block back to block manager.
-  UNIMPLEMENTED();
 
-  return inode_res;
+  return ChfsResult<inode_id_t>{inode_id};
 }
 
 auto FileOperation::getattr(inode_id_t id) -> ChfsResult<FileAttr> {
@@ -124,7 +132,7 @@ auto FileOperation::write_file(inode_id_t id, const std::vector<u8> &content)
 
     // If there are no more indirect blocks.
     if (old_block_num > inlined_blocks_num &&
-        new_block_num <= inlined_blocks_num && true) {
+        new_block_num <= inlined_blocks_num) {
 
       auto res =
           this->block_allocator_->deallocate(inode_p->get_indirect_block_id());
