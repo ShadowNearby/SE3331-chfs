@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "block/manager.h"
+#include "common/logger.h"
 
 namespace chfs {
 
@@ -74,6 +75,7 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt)
 
 auto BlockManager::write_block(block_id_t block_id, const u8 *data)
     -> ChfsNullResult {
+  //        LOG_FORMAT_INFO("write block {}", block_id);
   std::copy(data, data + block_sz, block_data + block_id * block_sz);
   return KNullOk;
 }
@@ -92,6 +94,7 @@ auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
 }
 
 auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
+  //        LOG_FORMAT_INFO("zero block {}", block_id);
   std::transform(block_data + block_id * block_sz,
                  block_data + (block_id + 1) * block_sz,
                  block_data + block_id * block_sz, [](auto ch) { return 0; });
