@@ -2,6 +2,7 @@
 #include <sstream>
 #include "fmt/core.h"
 #include "filesystem/directory_op.h"
+//#include "common/logger.h"
 
 namespace chfs
 {
@@ -45,16 +46,17 @@ namespace chfs
     -> std::string
     {
         //       Append the new directory entry to `src`.
+        std::string res;
         if (src.empty()) {
-            return fmt::format("{}:{}", filename, inode_id_to_string(id));
-        }
-        return fmt::format("{}/{}:{}", src, filename, inode_id_to_string(id));
+            res = fmt::format("{}:{}", filename, inode_id_to_string(id));
+        } else { res = fmt::format("{}/{}:{}", src, filename, inode_id_to_string(id)); }
+//        LOG_FORMAT_DEBUG("append result {}", res);
+        return res;
     }
 
 // {Your code here}
     void parse_directory(std::string &src, std::list<DirectoryEntry> &list)
     {
-
         size_t it1 = 0, it2 = 0;
         std::string filename{}, id_str{};
         while (true) {
@@ -64,8 +66,9 @@ namespace chfs
                 return;
             }
             if (temp2 == -1) {
-                filename = src.substr(it1, temp1 - it1);
+                filename = src.substr(it2, temp1 - it2);
                 id_str = src.substr(temp1 + 1, src.size() - temp1);
+//                LOG_FORMAT_INFO("filename {} id {}", filename, id_str);
                 list.emplace_back(DirectoryEntry{filename, string_to_inode_id(id_str)});
                 return;
             }
@@ -73,6 +76,7 @@ namespace chfs
             id_str = src.substr(temp1 + 1, temp2 - temp1 - 1);
             it1 = temp1 + 1;
             it2 = temp2 + 1;
+//            LOG_LEVEL_INFO("filename {} id {}", filename, id_str);
             list.emplace_back(DirectoryEntry{filename, string_to_inode_id(id_str)});
         }
 
@@ -115,6 +119,7 @@ namespace chfs
         }
         auto buffer = read_res.unwrap();
         auto src = std::string(buffer.begin(), buffer.end());
+
         parse_directory(src, list);
         return KNullOk;
     }
