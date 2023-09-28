@@ -102,7 +102,7 @@ namespace chfs
                 std::vector<uint8_t> buffer(bm->block_size());
                 node.flush_to_buffer(buffer.data());
                 bm->write_block(bid, buffer.data());
-                auto inode_row_id = free_idx.value() + count * bm->block_size() * 8;
+                auto inode_row_id = free_idx.value() + count * bm->block_size() / sizeof(block_id_t);
                 auto logic_idx = RAW_2_LOGIC(inode_row_id);
                 set_table(inode_row_id, bid);
                 // 1. Initialize the inode with the given type.
@@ -120,7 +120,7 @@ namespace chfs
 // { Your code here }
     auto InodeManager::set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult
     {
-        auto inode_per_block = bm->block_size() / sizeof(block_id_t);
+        uint64_t inode_per_block = bm->block_size() / sizeof(block_id_t);
         auto inode_table_block = idx / inode_per_block;
         auto inode_table_block_index = idx % inode_per_block;
         std::vector<uint8_t> buffer(bm->block_size());
@@ -139,11 +139,12 @@ namespace chfs
 // { Your code here }
     auto InodeManager::get(inode_id_t id) -> ChfsResult<block_id_t>
     {
+
         block_id_t res_block_id = 0;
-        auto inode_per_block = bm->block_size() / sizeof(block_id_t);
-        auto raw_id = LOGIC_2_RAW(id);
-        auto inode_table_block = raw_id / inode_per_block;
-        auto inode_table_block_index = raw_id % inode_table_block;
+        uint64_t inode_per_block = bm->block_size() / sizeof(block_id_t);
+        uint64_t raw_id = LOGIC_2_RAW(id);
+        uint64_t inode_table_block = raw_id / inode_per_block;
+        uint64_t inode_table_block_index = raw_id % inode_per_block;
         std::vector<uint8_t> buffer(bm->block_size());
         bm->read_block(inode_table_block + 1, buffer.data());
         res_block_id = *(block_id_t *) (buffer.data() +

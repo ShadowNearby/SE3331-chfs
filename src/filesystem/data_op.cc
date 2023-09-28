@@ -2,6 +2,7 @@
 
 #include "filesystem/operations.h"
 #include "fmt/core.h"
+#include "common/logger.h"
 
 namespace chfs
 {
@@ -110,12 +111,10 @@ namespace chfs
         original_file_sz = inode_p->get_size();
         old_block_num = calculate_block_sz(original_file_sz, block_size);
         new_block_num = calculate_block_sz(content.size(), block_size);
-        //        LOG_FORMAT_DEBUG("old {} new {}", old_block_num, new_block_num);
         if (new_block_num > old_block_num) {
             // If we need to allocate more blocks.
             for (usize idx = old_block_num; idx < new_block_num; ++idx) {
 
-                // TODO: Implement the case of allocating more blocks.
                 auto block_id_res = block_allocator_->allocate();
                 if (block_id_res.is_err()) {
                     error_code = block_id_res.unwrap_error();
@@ -139,14 +138,6 @@ namespace chfs
                     *(block_id_t *) (indirect_block.data() +
                                      (idx - inode_p->get_direct_block_num()) *
                                      (sizeof(block_id_t) / sizeof(uint8_t))) = block_id;
-                    //                    LOG_FORMAT_INFO(
-                    //                            "indirect block_id {} index {}",
-                    //                            *(block_id_t *) (indirect_block.data() +
-                    //                                             (idx -
-                    //                                             inode_p->get_direct_block_num())
-                    //                                             * (sizeof(block_id_t) /
-                    //                                             sizeof(uint8_t))),
-                    //                            idx);
                 }
 
                 // 1. Allocate a block.
@@ -231,18 +222,12 @@ namespace chfs
                             *(block_id_t *) (indirect_block.data() +
                                              (block_idx - inode_p->get_direct_block_num()) *
                                              (sizeof(block_id_t) / sizeof(uint8_t)));
-                    //        LOG_FORMAT_INFO("write to indirect block data {} block id {}
-                    //        index {}",
-                    //                        (char)buffer[0], block_id, block_idx);
                 }
 
                 // TODO: Write to current block.
                 block_manager_->write_block(block_id, buffer.data());
                 write_sz += sz;
                 block_idx += 1;
-                //                LOG_FORMAT_DEBUG("sz {} write sz {} block_idx {}
-                //                block_id {}", sz,
-                //                                 write_sz, block_idx, block_id);
             }
         }
 
@@ -310,30 +295,25 @@ namespace chfs
             // Get current block id.
             block_id_t block_id{};
             if (inode_p->is_direct_block(read_sz / block_size)) {
-                // TODO: Implement the case of direct block.
-                block_id = read_sz / block_size;
-                block_manager_->read_block(inode_p->operator[](block_id), buffer.data());
+                auto block_index = read_sz / block_size;
+                block_id = inode_p->operator[](block_index);
+                block_manager_->read_block(block_id, buffer.data());
             } else {
                 indirect_block.resize(block_size);
                 block_manager_->read_block(inode_p->get_indirect_block_id(),
                                            indirect_block.data());
+                indirect_block.clear();
+                indirect_block.resize(block_size);
                 block_id = *(block_id_t *) (indirect_block.data() +
                                             (read_sz / block_size -
                                              inode_p->get_direct_block_num()) *
                                             (sizeof(block_id_t) / sizeof(uint8_t)));
                 block_manager_->read_block(block_id, buffer.data());
-                //                LOG_FORMAT_INFO("read from indirect data {} block id
-                //                {}", (char) buffer[0],
-                //                                block_id);
             }
             content.insert(content.end(), buffer.begin(), buffer.begin() + sz);
             buffer.clear();
             read_sz += sz;
-            //            LOG_FORMAT_DEBUG("sz {} read sz {} content size {} block_id
-            //            {}", sz,
-            //                             read_sz, content.size(), block_id);
         }
-
         return ChfsResult<std::vector<u8>>(std::move(content));
 
         err_ret:

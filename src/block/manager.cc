@@ -82,7 +82,6 @@ namespace chfs
     auto BlockManager::write_block(block_id_t block_id, const u8 *data)
     -> ChfsNullResult
     {
-        //        LOG_FORMAT_INFO("write block {}", block_id);
         std::copy(data, data + block_sz, block_data + block_id * block_sz);
         return KNullOk;
     }
@@ -104,7 +103,6 @@ namespace chfs
 
     auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult
     {
-        //        LOG_FORMAT_INFO("zero block {}", block_id);
         std::transform(block_data + block_id * block_sz,
                        block_data + (block_id + 1) * block_sz,
                        block_data + block_id * block_sz, [](auto ch) { return 0; });

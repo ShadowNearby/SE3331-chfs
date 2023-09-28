@@ -2,10 +2,21 @@
 #include <sstream>
 #include "fmt/core.h"
 #include "filesystem/directory_op.h"
-//#include "common/logger.h"
 
 namespace chfs
 {
+
+    auto type_to_str(InodeType type) -> std::string
+    {
+        switch (type) {
+            case InodeType::Unknown:
+                return "unknown";
+            case InodeType::FILE:
+                return "file";
+            case InodeType::Directory:
+                return "directory";
+        }
+    }
 
 /**
  * Some helper functions
@@ -50,7 +61,6 @@ namespace chfs
         if (src.empty()) {
             res = fmt::format("{}:{}", filename, inode_id_to_string(id));
         } else { res = fmt::format("{}/{}:{}", src, filename, inode_id_to_string(id)); }
-//        LOG_FORMAT_DEBUG("append result {}", res);
         return res;
     }
 
@@ -68,7 +78,6 @@ namespace chfs
             if (temp2 == -1) {
                 filename = src.substr(it2, temp1 - it2);
                 id_str = src.substr(temp1 + 1, src.size() - temp1);
-//                LOG_FORMAT_INFO("filename {} id {}", filename, id_str);
                 list.emplace_back(DirectoryEntry{filename, string_to_inode_id(id_str)});
                 return;
             }
@@ -76,7 +85,6 @@ namespace chfs
             id_str = src.substr(temp1 + 1, temp2 - temp1 - 1);
             it1 = temp1 + 1;
             it2 = temp2 + 1;
-//            LOG_LEVEL_INFO("filename {} id {}", filename, id_str);
             list.emplace_back(DirectoryEntry{filename, string_to_inode_id(id_str)});
         }
 
@@ -163,6 +171,7 @@ namespace chfs
         auto buffer = read_res.unwrap();
         auto src = std::string(buffer.begin(), buffer.end());
         auto res = append_to_directory(src, std::string{name}, inode_id);
+        buffer.clear();
         buffer = std::vector<uint8_t>{res.begin(), res.end()};
         this->write_file(id, buffer);
         // 1. Check if `name` already exists in the parent.
@@ -170,7 +179,7 @@ namespace chfs
         // 2. Create the new inode.
         // 3. Append the new entry to the parent directory.
 
-        return ChfsResult<inode_id_t>(static_cast<inode_id_t>(inode_id));
+        return ChfsResult<inode_id_t>{inode_id};
     }
 
 // {Your code here}
@@ -184,6 +193,7 @@ namespace chfs
         auto buffer = read_res.unwrap();
         auto src = std::string(buffer.begin(), buffer.end());
         auto res = rm_from_directory(src, std::string{name});
+        buffer.clear();
         buffer = std::vector<uint8_t>{res.begin(), res.end()};
         this->write_file(parent, buffer);
         // 1. Remove the file, you can use the function `remove_file`
