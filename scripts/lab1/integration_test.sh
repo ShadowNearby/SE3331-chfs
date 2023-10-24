@@ -3,7 +3,7 @@
 PARENT_DIR="$(dirname "$(realpath "$0")")"
 source $PARENT_DIR/set-env.sh
 
-CHFSDIR1=$ROOT_PATH/mnt
+CHFSDIR1=/tmp/mnt
 SCRIPTS_PATH=$ROOT_PATH/scripts/lab1
 
 passed_cnt=0
@@ -11,7 +11,6 @@ passed_cnt=0
 $SCRIPTS_PATH/stop_fs.sh
 sleep 2
 $SCRIPTS_PATH/start_fs.sh
-
 test_chsf_alive(){
 	ps -e | grep -q "fs"
 	if [ $? -ne 0 ];

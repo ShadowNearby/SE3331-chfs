@@ -7,6 +7,7 @@
  */
 
 #define FUSE_USE_VERSION 26
+
 #include <fuse/fuse_lowlevel.h>
 
 #include <iostream>
@@ -21,6 +22,7 @@
 // This header must be include at the bottom
 // Since we need to redefine some MACROS in CHFS
 #include "./logger.h"
+
 namespace chfs {
 
 Logger logger("chfs.log"); // Definition of the global logger instance
