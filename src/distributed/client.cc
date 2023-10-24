@@ -81,7 +81,7 @@ auto ChfsClient::read_file(inode_id_t id, usize offset, usize size)
 auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data)
     -> ChfsNullResult {
   // TODO: Implement this function.
-  UNIMPLEMENTED();      
+  UNIMPLEMENTED();
   return KNullOk;
 }
 

@@ -69,7 +69,7 @@ public:
   /**
    * Creates a new block manager that writes to a file-backed block device.
    * It reserves some blocks for recording logs.
-   * 
+   *
    * @param block_file the file name of the  file to write to
    * @param block_cnt the number of blocks in the device
    * @param is_log_enabled whether to enable log
@@ -139,9 +139,7 @@ public:
   /**
    * Mark the block manager as may fail state
    */
-  auto set_may_fail(bool may_fail) -> void {
-    this->maybe_failed = may_fail;
-  }
+  auto set_may_fail(bool may_fail) -> void { this->maybe_failed = may_fail; }
 };
 
 /**

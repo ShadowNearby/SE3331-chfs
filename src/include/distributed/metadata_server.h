@@ -13,11 +13,11 @@
 
 #include "common/config.h"
 #include "common/util.h"
+#include "distributed/commit_log.h"
+#include "filesystem/operations.h"
 #include "librpc/client.h"
 #include "librpc/server.h"
 #include "metadata/manager.h"
-#include "filesystem/operations.h"
-#include "distributed/commit_log.h"
 
 namespace chfs {
 
@@ -164,7 +164,7 @@ public:
    * A RPC handler for client. It returns the type and attribute of a file
    *
    * @param id: The inode id of the file
-   * 
+   *
    * @return: a tuple of <size, atime, mtime, ctime, type>
    */
   auto get_type_attr(inode_id_t id) -> std::tuple<u64, u64, u64, u64, u8>;

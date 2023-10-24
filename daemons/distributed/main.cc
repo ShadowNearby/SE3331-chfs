@@ -118,7 +118,8 @@ void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 
   ChfsClient *fs = reinterpret_cast<ChfsClient *>(fuse_req_userdata(req));
 
-  std::cerr << "Read file from inode " << ino << " at off " << off << " with " << size << std::endl;
+  std::cerr << "Read file from inode " << ino << " at off " << off << " with "
+            << size << std::endl;
   auto attr_res = fs->get_type_attr(ino);
   if (attr_res.is_err()) {
     fuse_reply_err(req, -1); // fatal error
@@ -134,7 +135,6 @@ void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
     return;
   }
 
-
   auto read_res = fs->read_file(ino, off, size);
   if (read_res.is_err()) {
     std::cerr << "Bad read requests" << std::endl;
@@ -143,8 +143,7 @@ void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
   }
 
   auto res_data = read_res.unwrap();
-  fuse_reply_buf(req, reinterpret_cast<const char *>(res_data.data()),
-                 size);
+  fuse_reply_buf(req, reinterpret_cast<const char *>(res_data.data()), size);
 }
 
 /** Read the target of a symbolic link
@@ -306,16 +305,16 @@ void chfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set,
   ChfsClient *fs = reinterpret_cast<ChfsClient *>(fuse_req_userdata(req));
 
   // do nothing
-    auto attr_res = fs->get_type_attr(ino);
-    if (attr_res.is_err()) {
-      fuse_reply_err(req, -1); // fatal error
-      return;
-    }
-    auto type_attr = attr_res.unwrap();
-    auto file_attr = std::get<1>(type_attr);
-    auto st = getattr_helper(std::get<0>(type_attr), file_attr);
-    fuse_reply_attr(req, &st, 0);
+  auto attr_res = fs->get_type_attr(ino);
+  if (attr_res.is_err()) {
+    fuse_reply_err(req, -1); // fatal error
     return;
+  }
+  auto type_attr = attr_res.unwrap();
+  auto file_attr = std::get<1>(type_attr);
+  auto st = getattr_helper(std::get<0>(type_attr), file_attr);
+  fuse_reply_attr(req, &st, 0);
+  return;
 }
 
 /** Rename a file */
@@ -515,9 +514,11 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
 
   // 2. prepare the filesystem client
   auto fs = new ChfsClient();
-  fs->reg_server(ChfsClient::ServerType::METADATA_SERVER, "127.0.0.1", kMetadataServerPort, true);
+  fs->reg_server(ChfsClient::ServerType::METADATA_SERVER, "127.0.0.1",
+                 kMetadataServerPort, true);
   for (auto i = 0; i < kDataServerNum; ++i)
-    fs->reg_server(ChfsClient::ServerType::DATA_SERVER, "127.0.0.1", kDataServerPorts[i], true);
+    fs->reg_server(ChfsClient::ServerType::DATA_SERVER, "127.0.0.1",
+                   kDataServerPorts[i], true);
 
   auto se =
       fuse_lowlevel_new(&args, &fuseserver_oper, sizeof(fuseserver_oper), fs);
@@ -556,7 +557,7 @@ void chfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name) {
 
   auto lookup = lookup_res.unwrap();
   e.ino = lookup;
- 
+
   auto attr_res = fs->get_type_attr(e.ino);
   if (attr_res.is_err()) {
     fuse_reply_err(req, -1);

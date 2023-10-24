@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstring>
 #include <fcntl.h>
 #include <filesystem>
@@ -43,6 +42,8 @@ BlockManager::BlockManager(usize block_cnt, usize block_size)
     : block_sz(block_size), file_name_("in-memory"), fd(-1),
       block_cnt(block_cnt), in_memory(true) {
   // An important step to prevent overflow
+  this->write_fail_cnt = 0;
+  this->maybe_failed = false;
   u64 buf_sz = static_cast<u64>(block_cnt) * static_cast<u64>(block_size);
   CHFS_VERIFY(buf_sz > 0, "Santiy check buffer size fails");
   this->block_data = new u8[buf_sz];
@@ -55,6 +56,8 @@ BlockManager::BlockManager(usize block_cnt, usize block_size)
  */
 BlockManager::BlockManager(const std::string &file, usize block_cnt)
     : file_name_(file), block_cnt(block_cnt), in_memory(false) {
+  this->write_fail_cnt = 0;
+  this->maybe_failed = false;
   this->fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   CHFS_ASSERT(this->fd != -1, "Failed to open the block manager file");
 
@@ -73,29 +76,79 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt)
   CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
 }
 
+BlockManager::BlockManager(const std::string &file, usize block_cnt,
+                           bool is_log_enabled)
+    : file_name_(file), block_cnt(block_cnt), in_memory(false) {
+  this->write_fail_cnt = 0;
+  this->maybe_failed = false;
+  // TODO: Implement this function.
+  UNIMPLEMENTED();
+}
+
 auto BlockManager::write_block(block_id_t block_id, const u8 *data)
     -> ChfsNullResult {
-  std::copy(data, data + block_sz, block_data + block_id * block_sz);
+  if (this->maybe_failed && block_id < this->block_cnt) {
+    if (this->write_fail_cnt >= 3) {
+      this->write_fail_cnt = 0;
+      return KNullOk;
+    }
+  }
+
+  // TODO: Implement this function.
+  UNIMPLEMENTED();
+  this->write_fail_cnt++;
   return KNullOk;
 }
 
 auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
                                        usize offset, usize len)
     -> ChfsNullResult {
-  std::copy(data, data + len, block_data + block_id * block_sz + offset);
+  if (this->maybe_failed && block_id < this->block_cnt) {
+    if (this->write_fail_cnt >= 3) {
+      this->write_fail_cnt = 0;
+      return KNullOk;
+    }
+  }
+
+  // TODO: Implement this function.
+  UNIMPLEMENTED();
+  this->write_fail_cnt++;
   return KNullOk;
 }
 
 auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
-  std::copy(block_data + block_id * block_sz,
-            block_data + (block_id + 1) * block_sz, data);
+
+  // TODO: Implement this function.
+  UNIMPLEMENTED();
+
   return KNullOk;
 }
 
 auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
-  std::transform(block_data + block_id * block_sz,
-                 block_data + (block_id + 1) * block_sz,
-                 block_data + block_id * block_sz, [](auto ch) { return 0; });
+
+  // TODO: Implement this function.
+  UNIMPLEMENTED();
+
+  return KNullOk;
+}
+
+auto BlockManager::sync(block_id_t block_id) -> ChfsNullResult {
+  if (block_id >= this->block_cnt) {
+    return ChfsNullResult(ErrorType::INVALID_ARG);
+  }
+
+  auto res = msync(this->block_data + block_id * this->block_sz, this->block_sz,
+                   MS_SYNC | MS_INVALIDATE);
+  if (res != 0)
+    return ChfsNullResult(ErrorType::INVALID);
+  return KNullOk;
+}
+
+auto BlockManager::flush() -> ChfsNullResult {
+  auto res = msync(this->block_data, this->block_sz * this->block_cnt,
+                   MS_SYNC | MS_INVALIDATE);
+  if (res != 0)
+    return ChfsNullResult(ErrorType::INVALID);
   return KNullOk;
 }
 

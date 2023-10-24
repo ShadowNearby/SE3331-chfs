@@ -23,8 +23,8 @@ class InodeManager;
 /**
  * BlockManager implements a block allocator to manage blocks of the manager
  * It internally uses bitmap for the management.
- * Note that the block allocator is **not** thread-safe. In lab2, you should make
- * it thread-safe.
+ * Note that the block allocator is **not** thread-safe. In lab2, you should
+ * make it thread-safe.
  *
  * # Example
  *
