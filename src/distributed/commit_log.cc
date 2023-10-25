@@ -14,7 +14,8 @@ namespace chfs {
 // {Your code here}
 CommitLog::CommitLog(std::shared_ptr<BlockManager> bm,
                      bool is_checkpoint_enabled)
-    : is_checkpoint_enabled_(is_checkpoint_enabled), bm_(bm) {}
+    : is_checkpoint_enabled_(is_checkpoint_enabled), bm_(bm) {
+}
 
 CommitLog::~CommitLog() {}
 

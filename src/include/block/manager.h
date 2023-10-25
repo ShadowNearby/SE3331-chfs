@@ -139,7 +139,9 @@ public:
   /**
    * Mark the block manager as may fail state
    */
-  auto set_may_fail(bool may_fail) -> void { this->maybe_failed = may_fail; }
+  auto set_may_fail(bool may_fail) -> void {
+    this->maybe_failed = may_fail;
+  }
 };
 
 /**
