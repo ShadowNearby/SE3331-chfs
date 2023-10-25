@@ -1,5 +1,7 @@
 #include "distributed/dataserver.h"
+
 #include "common/util.h"
+#include <memory>
 
 namespace chfs {
 
@@ -12,8 +14,7 @@ auto DataServer::initialize(std::string const &data_path) {
    */
   bool is_initialized = is_file_exist(data_path);
 
-  auto bm = std::shared_ptr<BlockManager>(
-      new BlockManager(data_path, KDefaultBlockCnt));
+  auto bm = std::make_shared<BlockManager>(data_path, KDefaultBlockCnt);
   if (is_initialized) {
     auto version_blocks_cnt =
         (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
@@ -23,8 +24,8 @@ auto DataServer::initialize(std::string const &data_path) {
     // We need to reserve some blocks for storing the version of each block
     auto version_blocks_cnt =
         (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
-    block_allocator_ = std::shared_ptr<BlockAllocator>(
-        new BlockAllocator(bm, version_blocks_cnt, true));
+    block_allocator_ =
+        std::make_shared<BlockAllocator>(bm, version_blocks_cnt, true);
     for (block_id_t i = 0; i < version_blocks_cnt; i++) {
       bm->zero_block(i);
     }
@@ -64,34 +65,63 @@ DataServer::~DataServer() { server_.reset(); }
 // {Your code here}
 auto DataServer::read_data(block_id_t block_id, usize offset, usize len,
                            version_t version) -> std::vector<u8> {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return {};
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
+  auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
+  block_allocator_->bm->read_block(block_index, buffer.data());
+  auto value = *(version_t *)(buffer.data() +
+                              version_index * (sizeof(version_t) / sizeof(u8)));
+  if (value != version) {
+    return std::vector<u8>(0);
+  }
+  block_allocator_->bm->read_block(block_id, buffer.data());
+  auto result = std::vector<u8>(len);
+  std::move(buffer.begin() + offset, buffer.begin() + offset + len,
+            result.begin());
+  return result;
 }
 
 // {Your code here}
 auto DataServer::write_data(block_id_t block_id, usize offset,
                             std::vector<u8> &buffer) -> bool {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return false;
+  block_allocator_->bm->write_partial_block(block_id, buffer.data(), offset,
+                                            buffer.size());
+  return true;
 }
 
 // {Your code here}
 auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return {};
+  auto res = block_allocator_->allocate();
+  block_id_t block_id = res.unwrap();
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
+  auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
+  block_allocator_->bm->read_block(block_index, buffer.data());
+  auto value_ptr =
+      (version_t *)(buffer.data() +
+                    version_index * (sizeof(version_t) / sizeof(u8)));
+  auto value = *value_ptr;
+  *value_ptr = value + 1;
+  block_allocator_->bm->write_block(block_index, buffer.data());
+  return {block_id, value + 1};
 }
 
 // {Your code here}
 auto DataServer::free_block(block_id_t block_id) -> bool {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
+  auto res = block_allocator_->deallocate(block_id);
+  if (res.is_ok()) {
+    auto buffer = std::vector<u8>(DiskBlockSize);
+    auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
+    auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
+    block_allocator_->bm->read_block(block_index, buffer.data());
+    auto value_ptr =
+        (version_t *)(buffer.data() +
+                      version_index * (sizeof(version_t) / sizeof(u8)));
+    auto value = *value_ptr;
+    *value_ptr = value + 1;
+    block_allocator_->bm->write_block(block_index, buffer.data());
+    return true;
+  }
   return false;
 }
 } // namespace chfs

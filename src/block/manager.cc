@@ -83,6 +83,22 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt,
   this->maybe_failed = false;
   // TODO: Implement this function.
   UNIMPLEMENTED();
+  this->fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  CHFS_ASSERT(this->fd != -1, "Failed to open the block manager file");
+
+  auto file_sz = get_file_sz(this->file_name_);
+  if (file_sz == 0) {
+    initialize_file(this->fd, this->total_storage_sz());
+  } else {
+    this->block_cnt = file_sz / this->block_sz;
+    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz,
+                "The file size mismatches");
+  }
+
+  this->block_data =
+      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(),
+                             PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
+  CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
 }
 
 auto BlockManager::write_block(block_id_t block_id, const u8 *data)
@@ -93,9 +109,7 @@ auto BlockManager::write_block(block_id_t block_id, const u8 *data)
       return KNullOk;
     }
   }
-
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
+  std::copy(data, data + block_sz, block_data + block_id * block_sz);
   this->write_fail_cnt++;
   return KNullOk;
 }
@@ -109,26 +123,23 @@ auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
       return KNullOk;
     }
   }
-
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
+  std::copy(data, data + len, block_data + block_id * block_sz + offset);
   this->write_fail_cnt++;
   return KNullOk;
 }
 
 auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
 
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
+  std::copy(block_data + block_id * block_sz,
+            block_data + (block_id + 1) * block_sz, data);
   return KNullOk;
 }
 
 auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
 
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
+  std::transform(block_data + block_id * block_sz,
+                 block_data + (block_id + 1) * block_sz,
+                 block_data + block_id * block_sz, [](auto ch) { return 0; });
   return KNullOk;
 }
 
