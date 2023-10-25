@@ -1,5 +1,5 @@
-#include <chrono>
 #include <gtest/gtest.h>
+#include <chrono>
 #include <random>
 #include <thread>
 #include <unordered_set>
@@ -10,7 +10,7 @@
 namespace chfs {
 
 class MetadataConcurrentStressTest : public ::testing::Test {
-protected:
+ protected:
   // In this test, we simulate 4 nodes: 1 metadata server and 3 data servers.
   const u16 meta_port = 8080;
   const u16 data_ports[3] = {8081, 8082, 8083};
@@ -99,8 +99,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
       for (u64 k = 0; k < test_iterations; ++k) {
         // Create 100 files in dir1
         for (u64 j = 0; j < 100; ++j) {
-          std::string name =
-              "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
           auto file_id = meta_srv->mknode(RegularFileType, dir1_id, name);
           ASSERT_TRUE(file_id > 0);
           inode_id_sets.insert(file_id);
@@ -111,8 +110,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
 
         // And delete 100 files in dir1
         for (u64 j = 0; j < 100; ++j) {
-          std::string name =
-              "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
           auto del_res = meta_srv->unlink(dir1_id, name);
           ASSERT_TRUE(del_res);
         }
@@ -134,8 +132,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
       for (u64 k = 0; k < test_iterations; ++k) {
         // Create 100 files in dir1
         for (u64 j = 0; j < 100; ++j) {
-          std::string name =
-              "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
           auto file_id = meta_srv->mknode(RegularFileType, dir2_id, name);
           ASSERT_TRUE(file_id > 0);
           inode_id_sets.insert(file_id);
@@ -146,8 +143,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
 
         // And delete 100 files in dir1
         for (u64 j = 0; j < 100; ++j) {
-          std::string name =
-              "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
           auto del_res = meta_srv->unlink(dir2_id, name);
           ASSERT_TRUE(del_res);
         }
@@ -177,8 +173,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
         }
 
         // Check invariants
-        std::unordered_set<block_id_t>
-            block_id_set_on_macs[3]; // 3 data servers
+        std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
         for (auto [block_id, mac_id] : active_blocks) {
           block_id_set_on_macs[mac_id - 1].insert(block_id);
         }
@@ -218,8 +213,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
         }
 
         // Check invariants
-        std::unordered_set<block_id_t>
-            block_id_set_on_macs[3]; // 3 data servers
+        std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
         for (auto [block_id, mac_id] : active_blocks) {
           block_id_set_on_macs[mac_id - 1].insert(block_id);
         }
@@ -274,7 +268,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
   EXPECT_EQ(dir_content_2[0].second, 5);
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 int main(int argc, char **argv) {
   // Initialize Google Test

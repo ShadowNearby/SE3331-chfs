@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include "metadata/manager.h"
 #include <sys/stat.h>
+#include "metadata/manager.h"
 
 namespace chfs {
 
@@ -22,14 +22,14 @@ namespace chfs {
 class FileOperation {
   friend class MetadataServer;
 
-protected:
+ protected:
   // Feel free to remove them if you don't want to implement the inode-based
   // filesystem
   [[maybe_unused]] std::shared_ptr<BlockManager> block_manager_;
   [[maybe_unused]] std::shared_ptr<InodeManager> inode_manager_;
   [[maybe_unused]] std::shared_ptr<BlockAllocator> block_allocator_;
 
-public:
+ public:
   /**
    * Initialize a filesystem from scratch
    * @param bm the block manager to manage the block device
@@ -43,8 +43,7 @@ public:
    *
    * Note that this function will consider the filesystem as not corrupted
    */
-  static auto create_from_raw(std::shared_ptr<BlockManager> bm)
-      -> ChfsResult<std::shared_ptr<FileOperation>>;
+  static auto create_from_raw(std::shared_ptr<BlockManager> bm) -> ChfsResult<std::shared_ptr<FileOperation>>;
 
   /**
    * Get the free inodes of the filesystem.
@@ -81,8 +80,7 @@ public:
   /**
    * The combined version of the above APIs
    */
-  auto get_type_attr(inode_id_t id)
-      -> ChfsResult<std::pair<InodeType, FileAttr>>;
+  auto get_type_attr(inode_id_t id) -> ChfsResult<std::pair<InodeType, FileAttr>>;
 
   /**
    * Write the content to the blocks pointed by the inode
@@ -103,8 +101,7 @@ public:
    *
    * @return the number of bytes written
    */
-  auto write_file_w_off(inode_id_t id, const char *data, u64 sz, u64 offset)
-      -> ChfsResult<u64>;
+  auto write_file_w_off(inode_id_t id, const char *data, u64 sz, u64 offset) -> ChfsResult<u64>;
 
   /**
    * Read the content to the blocks pointed by the inode
@@ -119,8 +116,7 @@ public:
    * # Note
    * We assume that the offset + size <= file size
    */
-  auto read_file_w_off(inode_id_t id, u64 sz, u64 offset)
-      -> ChfsResult<std::vector<u8>>;
+  auto read_file_w_off(inode_id_t id, u64 sz, u64 offset) -> ChfsResult<std::vector<u8>>;
 
   /**
    * Remove the file corresponding to an inode.
@@ -148,8 +144,7 @@ public:
    * @param parent the id of the parent
    * @param name the name of the directory
    */
-  auto mk_helper(inode_id_t parent, const char *name, InodeType type)
-      -> ChfsResult<inode_id_t>;
+  auto mk_helper(inode_id_t parent, const char *name, InodeType type) -> ChfsResult<inode_id_t>;
 
   /**
    * Create a directory at the parent
@@ -187,11 +182,9 @@ public:
    */
   auto unlink(inode_id_t parent, const char *name) -> ChfsNullResult;
 
-private:
-  FileOperation(std::shared_ptr<BlockManager> bm,
-                std::shared_ptr<InodeManager> im,
-                std::shared_ptr<BlockAllocator> ba)
+ private:
+  FileOperation(std::shared_ptr<BlockManager> bm, std::shared_ptr<InodeManager> im, std::shared_ptr<BlockAllocator> ba)
       : block_manager_(bm), inode_manager_(im), block_allocator_(ba) {}
 };
 
-} // namespace chfs
+}  // namespace chfs

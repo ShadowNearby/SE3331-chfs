@@ -26,10 +26,9 @@ namespace chfs {
  *
  */
 class ChfsClient {
-
-public:
+ public:
   enum class ServerType { DATA_SERVER, METADATA_SERVER };
-  enum class FileType : u8 { REGULAR = 1, DIRECTORY }; // for passing param
+  enum class FileType : u8 { REGULAR = 1, DIRECTORY };  // for passing param
 
   /**
    * Constructor.
@@ -52,8 +51,7 @@ public:
    *
    * @return: If running, the registration is failed.
    */
-  auto reg_server(ServerType type, const std::string &address, u16 port,
-                  bool reliable) -> ChfsNullResult;
+  auto reg_server(ServerType type, const std::string &address, u16 port, bool reliable) -> ChfsNullResult;
 
   /**
    * Some Filesystem operations for client.
@@ -64,8 +62,7 @@ public:
    *
    * @return: The inode number of the new created node.
    */
-  auto mknode(FileType type, inode_id_t parent, const std::string &name)
-      -> ChfsResult<inode_id_t>;
+  auto mknode(FileType type, inode_id_t parent, const std::string &name) -> ChfsResult<inode_id_t>;
 
   /**
    * It deletes an file on chfs from its parent.
@@ -83,8 +80,7 @@ public:
    *
    * @return: The inode number of the node.
    */
-  auto lookup(inode_id_t parent, const std::string &name)
-      -> ChfsResult<inode_id_t>;
+  auto lookup(inode_id_t parent, const std::string &name) -> ChfsResult<inode_id_t>;
 
   /**
    * It reads the content of a directory.
@@ -93,16 +89,14 @@ public:
    *
    * @return: The content of the directory.
    */
-  auto readdir(inode_id_t id)
-      -> ChfsResult<std::vector<std::pair<std::string, inode_id_t>>>;
+  auto readdir(inode_id_t id) -> ChfsResult<std::vector<std::pair<std::string, inode_id_t>>>;
 
   /**
    * It returns the type and attribute of a file.
    *
    * @param id: The inode id of the file.
    */
-  auto get_type_attr(inode_id_t id)
-      -> ChfsResult<std::pair<InodeType, FileAttr>>;
+  auto get_type_attr(inode_id_t id) -> ChfsResult<std::pair<InodeType, FileAttr>>;
 
   /**
    * It reads some bytes from a file.
@@ -113,8 +107,7 @@ public:
    *
    * @return: The content of the file.
    */
-  auto read_file(inode_id_t id, usize offset, usize size)
-      -> ChfsResult<std::vector<u8>>;
+  auto read_file(inode_id_t id, usize offset, usize size) -> ChfsResult<std::vector<u8>>;
 
   /**
    * It writes some bytes into a file.
@@ -125,8 +118,7 @@ public:
    *
    * @return: Whether the operation is successful.
    */
-  auto write_file(inode_id_t id, usize offset, std::vector<u8> data)
-      -> ChfsNullResult;
+  auto write_file(inode_id_t id, usize offset, std::vector<u8> data) -> ChfsNullResult;
 
   /**
    * It removes a block from a file.
@@ -134,14 +126,12 @@ public:
    * @param id: The inode id of the file.
    * @param block_id: The block id of the block to be removed.
    */
-  auto free_file_block(inode_id_t id, block_id_t block_id, mac_id_t mac_id)
-      -> ChfsNullResult;
+  auto free_file_block(inode_id_t id, block_id_t block_id, mac_id_t mac_id) -> ChfsNullResult;
 
-private:
+ private:
   std::map<mac_id_t, std::shared_ptr<RpcClient>> data_servers_;
-  std::shared_ptr<RpcClient>
-      metadata_server_; // Currently only one metadata server
+  std::shared_ptr<RpcClient> metadata_server_;  // Currently only one metadata server
   mac_id_t num_data_servers;
 };
 
-} // namespace chfs
+}  // namespace chfs

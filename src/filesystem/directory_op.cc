@@ -1,18 +1,18 @@
 #include "filesystem/directory_op.h"
-#include "fmt/core.h"
 #include <algorithm>
 #include <sstream>
+#include "fmt/core.h"
 
 namespace chfs {
 
 auto type_to_str(InodeType type) -> std::string {
   switch (type) {
-  case InodeType::Unknown:
-    return "unknown";
-  case InodeType::FILE:
-    return "file";
-  case InodeType::Directory:
-    return "directory";
+    case InodeType::Unknown:
+      return "unknown";
+    case InodeType::FILE:
+      return "file";
+    case InodeType::Directory:
+      return "directory";
   }
 }
 
@@ -33,8 +33,7 @@ auto inode_id_to_string(inode_id_t id) -> std::string {
 }
 
 // {Your code here}
-auto dir_list_to_string(const std::list<DirectoryEntry> &entries)
-    -> std::string {
+auto dir_list_to_string(const std::list<DirectoryEntry> &entries) -> std::string {
   std::ostringstream oss;
   usize cnt = 0;
   for (const auto &entry : entries) {
@@ -48,8 +47,7 @@ auto dir_list_to_string(const std::list<DirectoryEntry> &entries)
 }
 
 // {Your code here}
-auto append_to_directory(std::string src, std::string filename, inode_id_t id)
-    -> std::string {
+auto append_to_directory(std::string src, std::string filename, inode_id_t id) -> std::string {
   //       Append the new directory entry to `src`.
   std::string res;
   if (src.empty()) {
@@ -111,8 +109,7 @@ auto rm_from_directory(std::string src, std::string filename) -> std::string {
 /**
  * { Your implementation here }
  */
-auto read_directory(FileOperation *fs, inode_id_t id,
-                    std::list<DirectoryEntry> &list) -> ChfsNullResult {
+auto read_directory(FileOperation *fs, inode_id_t id, std::list<DirectoryEntry> &list) -> ChfsNullResult {
   auto read_res = fs->read_file(id);
   if (read_res.is_err()) {
     return ChfsNullResult{read_res.unwrap_error()};
@@ -125,8 +122,7 @@ auto read_directory(FileOperation *fs, inode_id_t id,
 }
 
 // {Your code here}
-auto FileOperation::lookup(inode_id_t id, const char *name)
-    -> ChfsResult<inode_id_t> {
+auto FileOperation::lookup(inode_id_t id, const char *name) -> ChfsResult<inode_id_t> {
   std::list<DirectoryEntry> list;
   read_directory(this, id, list);
   for (const auto &de : list) {
@@ -138,8 +134,7 @@ auto FileOperation::lookup(inode_id_t id, const char *name)
 }
 
 // {Your code here}
-auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type)
-    -> ChfsResult<inode_id_t> {
+auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type) -> ChfsResult<inode_id_t> {
   auto lookup_res = lookup(id, name);
   if (lookup_res.is_ok()) {
     return ChfsResult<inode_id_t>{ErrorType::AlreadyExist};
@@ -173,8 +168,7 @@ auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type)
 }
 
 // {Your code here}
-auto FileOperation::unlink(inode_id_t parent, const char *name)
-    -> ChfsNullResult {
+auto FileOperation::unlink(inode_id_t parent, const char *name) -> ChfsNullResult {
   auto read_res = this->read_file(parent);
   if (read_res.is_err()) {
     return ChfsNullResult{read_res.unwrap_error()};
@@ -191,4 +185,4 @@ auto FileOperation::unlink(inode_id_t parent, const char *name)
   return KNullOk;
 }
 
-} // namespace chfs
+}  // namespace chfs

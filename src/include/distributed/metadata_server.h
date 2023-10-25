@@ -58,8 +58,8 @@ const u8 DirectoryType = 2;
 using BlockInfo = std::tuple<block_id_t, mac_id_t, version_t>;
 
 class MetadataServer {
-  const size_t num_worker_threads = 4; // worker threads for rpc handlers
-public:
+  const size_t num_worker_threads = 4;  // worker threads for rpc handlers
+ public:
   /**
    * Start a metadata server that listens on `localhost` with the given port.
    *
@@ -72,8 +72,7 @@ public:
    * @param is_checkpoint_enabled: Whether to enable the checkpoint.
    * @param may_failed: Whether the metadata server persist data may fail.
    */
-  MetadataServer(u16 port, const std::string &data_path = "/tmp/inode_data",
-                 bool is_log_enabled = false,
+  MetadataServer(u16 port, const std::string &data_path = "/tmp/inode_data", bool is_log_enabled = false,
                  bool is_checkpoint_enabled = false, bool may_failed = false);
 
   /**
@@ -86,10 +85,8 @@ public:
    * @param is_checkpoint_enabled: Whether to enable the checkpoint.
    * @param may_failed: Whether the metadata server persist data may fail.
    */
-  MetadataServer(std::string const &address, u16 port,
-                 const std::string &data_path = "/tmp/inode_data",
-                 bool is_log_enabled = false,
-                 bool is_checkpoint_enabled = false, bool may_failed = false);
+  MetadataServer(std::string const &address, u16 port, const std::string &data_path = "/tmp/inode_data",
+                 bool is_log_enabled = false, bool is_checkpoint_enabled = false, bool may_failed = false);
 
   /**
    * A RPC handler for client. It create a regular file or directory on metadata
@@ -105,8 +102,7 @@ public:
    * Also note that we don't use an enum for `type` since it needs extra
    * support by `msgpack` for serialization.
    */
-  auto mknode(u8 type, inode_id_t parent, const std::string &name)
-      -> inode_id_t;
+  auto mknode(u8 type, inode_id_t parent, const std::string &name) -> inode_id_t;
 
   /**
    * A RPC handler for client. It deletes an file on metadata server from its
@@ -157,8 +153,7 @@ public:
    *
    * @param node: The inode id of the directory
    */
-  auto readdir(inode_id_t node)
-      -> std::vector<std::pair<std::string, inode_id_t>>;
+  auto readdir(inode_id_t node) -> std::vector<std::pair<std::string, inode_id_t>>;
 
   /**
    * A RPC handler for client. It returns the type and attribute of a file
@@ -214,7 +209,7 @@ public:
     }
   }
 
-private:
+ private:
   /**
    * Helper function for binding rpc handlers
    */
@@ -227,11 +222,10 @@ private:
    */
   inline auto init_fs(const std::string &data_path);
 
-  std::unique_ptr<RpcServer> server_; // Receiving requests from the client
-  std::shared_ptr<FileOperation> operation_; // Real metadata handler
-  std::map<mac_id_t, std::shared_ptr<RpcClient>>
-      clients_;              // Sending requests to data server
-  mac_id_t num_data_servers; // The number of data servers
+  std::unique_ptr<RpcServer> server_;                       // Receiving requests from the client
+  std::shared_ptr<FileOperation> operation_;                // Real metadata handler
+  std::map<mac_id_t, std::shared_ptr<RpcClient>> clients_;  // Sending requests to data server
+  mac_id_t num_data_servers;                                // The number of data servers
   bool running;
   // Control which data server node allocates the new block
   RandomNumberGenerator generator;
@@ -247,4 +241,4 @@ private:
    */
 };
 
-} // namespace chfs
+}  // namespace chfs

@@ -1,16 +1,16 @@
-#include "common/result.h"
 #include "librpc/client.h"
-#include "librpc/server.h"
-#include "gtest/gtest.h"
-#include <ctime>
 #include <unistd.h>
+#include <ctime>
 #include <unordered_map>
+#include "common/result.h"
+#include "gtest/gtest.h"
+#include "librpc/server.h"
 
 namespace chfs {
 
 class LibRpcClientTest : public ::testing::Test {
-protected:
-  const u16 port = 8080; // Default listening port
+ protected:
+  const u16 port = 8080;  // Default listening port
   std::shared_ptr<RpcServer> srv;
 
   // This function is called before every test.
@@ -30,8 +30,7 @@ TEST_F(LibRpcClientTest, CreateAndConnect) {
   nanosleep(&time, nullptr);
 
   // Check the status of the connection
-  EXPECT_EQ(cli->get_connection_state(),
-            rpc::client::connection_state::connected);
+  EXPECT_EQ(cli->get_connection_state(), rpc::client::connection_state::connected);
 }
 
 TEST_F(LibRpcClientTest, BindAndCallSimple) {
@@ -113,8 +112,7 @@ TEST_F(LibRpcClientTest, WithNetworkFailure) {
 
   for (int i = 0; i < 100; ++i) {
     auto res = cli->call("add", 2, 3);
-    if (res.is_err())
-      failure_cnt += 1;
+    if (res.is_err()) failure_cnt += 1;
   }
 
   EXPECT_GE(failure_cnt, 0);
@@ -141,8 +139,7 @@ TEST_F(LibRpcClientTest, RpcSemantic) {
 
   for (int i = 0; i < 100; ++i) {
     auto res = cli->call("add", 2, 3);
-    if (res.is_err())
-      failure_cnt += 1;
+    if (res.is_err()) failure_cnt += 1;
   }
 
   EXPECT_GE(failure_cnt, 0);
@@ -158,8 +155,7 @@ TEST_F(LibRpcClientTest, DeliverBytes) {
   auto vblocks = new char[1024];
 
   // Init blocks
-  for (int i = 0; i < 1024; ++i)
-    vblocks[i] = '0' + i % 10;
+  for (int i = 0; i < 1024; ++i) vblocks[i] = '0' + i % 10;
 
   /*
    * We give the server a function that receives a buffer
@@ -173,11 +169,10 @@ TEST_F(LibRpcClientTest, DeliverBytes) {
     return buffer;
   });
 
-  srv->bind("write_bytes",
-            [&vblocks](const std::vector<char> &buffer, uint32_t offset) {
-              char *data = vblocks + offset;
-              memcpy(data, buffer.data(), buffer.size());
-            });
+  srv->bind("write_bytes", [&vblocks](const std::vector<char> &buffer, uint32_t offset) {
+    char *data = vblocks + offset;
+    memcpy(data, buffer.data(), buffer.size());
+  });
 
   // Now we can test whether the rpc works perfectly or not
   srv->run(true, 2);
@@ -188,8 +183,7 @@ TEST_F(LibRpcClientTest, DeliverBytes) {
   EXPECT_EQ(read_res.is_ok(), true);
 
   auto res_buffer = read_res.unwrap()->as<std::vector<char>>();
-  for (int i = 0; i < 5; ++i)
-    EXPECT_EQ(res_buffer[i], '0' + i);
+  for (int i = 0; i < 5; ++i) EXPECT_EQ(res_buffer[i], '0' + i);
 
   // Let's write some content to modify the data in server's block
   std::vector<char> new_buffer = {'H', 'e', 'l', 'l', 'o'};
@@ -209,8 +203,7 @@ TEST_F(LibRpcClientTest, DeliverBytes) {
 TEST_F(LibRpcClientTest, DeliverMap) {
   // Init a map and insert some elements
   std::unordered_map<uint64_t, uint32_t> umap;
-  for (int i = 0; i < 5; ++i)
-    umap[i] = '0' + i;
+  for (int i = 0; i < 5; ++i) umap[i] = '0' + i;
 
   /*
    * We give the server a function that receives a buffer
@@ -227,10 +220,8 @@ TEST_F(LibRpcClientTest, DeliverMap) {
   auto read_res = cli->call("read");
   EXPECT_EQ(read_res.is_ok(), true);
 
-  auto res_map =
-      read_res.unwrap()->as<std::unordered_map<uint64_t, uint32_t>>();
-  for (int i = 0; i < 5; ++i)
-    EXPECT_EQ(res_map[i], '0' + i);
+  auto res_map = read_res.unwrap()->as<std::unordered_map<uint64_t, uint32_t>>();
+  for (int i = 0; i < 5; ++i) EXPECT_EQ(res_map[i], '0' + i);
 }
 
-} // namespace chfs
+}  // namespace chfs
