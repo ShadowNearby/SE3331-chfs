@@ -109,19 +109,19 @@ auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
 // {Your code here}
 auto DataServer::free_block(block_id_t block_id) -> bool {
   auto res = block_allocator_->deallocate(block_id);
-  if (res.is_ok()) {
-    auto buffer = std::vector<u8>(DiskBlockSize);
-    auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
-    auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
-    block_allocator_->bm->read_block(block_index, buffer.data());
-    auto value_ptr =
-        (version_t *)(buffer.data() +
-                      version_index * (sizeof(version_t) / sizeof(u8)));
-    auto value = *value_ptr;
-    *value_ptr = value + 1;
-    block_allocator_->bm->write_block(block_index, buffer.data());
-    return true;
+  if (res.is_err()) {
+    return false;
   }
-  return false;
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
+  auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
+  block_allocator_->bm->read_block(block_index, buffer.data());
+  auto value_ptr =
+      (version_t *)(buffer.data() +
+                    version_index * (sizeof(version_t) / sizeof(u8)));
+  auto value = *value_ptr;
+  *value_ptr = value + 1;
+  block_allocator_->bm->write_block(block_index, buffer.data());
+  return true;
 }
 } // namespace chfs

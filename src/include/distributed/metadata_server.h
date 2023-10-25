@@ -13,11 +13,11 @@
 
 #include "common/config.h"
 #include "common/util.h"
+#include "distributed/commit_log.h"
+#include "filesystem/operations.h"
 #include "librpc/client.h"
 #include "librpc/server.h"
 #include "metadata/manager.h"
-#include "filesystem/operations.h"
-#include "distributed/commit_log.h"
 
 namespace chfs {
 
