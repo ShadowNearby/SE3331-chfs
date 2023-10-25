@@ -175,6 +175,14 @@ auto FileOperation::unlink(inode_id_t parent, const char *name) -> ChfsNullResul
   }
   auto buffer = read_res.unwrap();
   auto src = std::string(buffer.begin(), buffer.end());
+  std::list<DirectoryEntry> list;
+  parse_directory(src, list);
+  for (const auto &item : list) {
+    if (strcmp(name, item.name.c_str()) == 0) {
+      inode_manager_->free_inode(item.id);
+      break;
+    }
+  }
   auto res = rm_from_directory(src, std::string{name});
   buffer.clear();
   buffer = std::vector<uint8_t>{res.begin(), res.end()};

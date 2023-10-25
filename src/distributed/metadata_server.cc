@@ -115,20 +115,26 @@ auto MetadataServer::unlink(inode_id_t parent, const std::string &name) -> bool 
 // {Your code here}
 auto MetadataServer::lookup(inode_id_t parent, const std::string &name) -> inode_id_t {
   auto res = operation_->lookup(parent, name.c_str());
+  if (res.is_err()) {
+    return KInvalidInodeID;
+  }
   return res.unwrap();
 }
 
 // {Your code here}
 auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
-  auto buffer = operation_->read_file(id).unwrap();
-  auto block_info = BlockInfo{};
-  auto result = std::vector<BlockInfo>{};
-  for (size_t i = 0; i < DiskBlockSize / sizeof(BlockInfo); ++i) {
-    block_info = *(BlockInfo *)(buffer.data() + i);
-    if (std::get<0>(block_info) == 0 && std::get<1>(block_info) == 0 && std::get<2>(block_info) == 0) {
-      break;
-    }
-    result.emplace_back(block_info);
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto mac_buffer = std::vector<u8>(DiskBlockSize);
+  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
+  operation_->block_manager_->read_block(inode_block_id, buffer.data());
+  auto inode = reinterpret_cast<Inode *>(buffer.data());
+  if (inode->mac_block_id == KInvalidBlockID) {
+    return {};
+  }
+  operation_->block_manager_->read_block(inode->mac_block_id, mac_buffer.data());
+  std::vector<BlockInfo> result{};
+  for (u32 i = 0; i < inode->current_block_idx; ++i) {
+    result.emplace_back(*(inode->blocks + i), *((mac_id_t *)mac_buffer.data() + i), 0);
   }
   return result;
 }
@@ -137,8 +143,23 @@ auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
 auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
   auto mac_id = generator.rand(1, num_data_servers);
   auto call_res = clients_[mac_id]->call("alloc_block");
-  auto res = std::reinterpret_pointer_cast<std::pair<block_id_t, version_t>>(call_res.unwrap());
-  auto res_block_info = BlockInfo{res->first, mac_id, res->second};
+  auto res = call_res.unwrap()->as<std::pair<block_id_t, version_t>>();
+  auto res_block_info = BlockInfo{res.first, mac_id, res.second};
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
+  operation_->block_manager_->read_block(inode_block_id, buffer.data());
+  auto inode = reinterpret_cast<Inode *>(buffer.data());
+  if (inode->mac_block_id == KInvalidBlockID) {
+    inode->mac_block_id = operation_->block_allocator_->allocate().unwrap();
+  }
+  inode->blocks[inode->current_block_idx] = res.first;
+  auto mac_block_id = inode->mac_block_id;
+  auto current_block_idx = inode->current_block_idx;
+  inode->current_block_idx = inode->current_block_idx + 1;
+  operation_->block_manager_->write_block(inode_block_id, buffer.data());
+  operation_->block_manager_->read_block(mac_block_id, buffer.data());
+  *((mac_id_t *)buffer.data() + current_block_idx) = mac_id;
+  operation_->block_manager_->write_block(mac_block_id, buffer.data());
   return res_block_info;
 }
 
@@ -152,10 +173,13 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id, mac_id_t mac
 
 // {Your code here}
 auto MetadataServer::readdir(inode_id_t node) -> std::vector<std::pair<std::string, inode_id_t>> {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return {};
+  std::list<DirectoryEntry> list;
+  std::vector<std::pair<std::string, inode_id_t>> result;
+  read_directory(operation_.get(), node, list);
+  for (const auto &item : list) {
+    result.emplace_back(item.name, item.id);
+  }
+  return result;
 }
 
 // {Your code here}
