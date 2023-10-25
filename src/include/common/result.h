@@ -11,11 +11,12 @@ namespace chfs {
 /*
  A result class to handle error inspired by rust
 */
-template <typename T, typename E> class Result {
+template <typename T, typename E>
+class Result {
   std::variant<T, E> data;
   bool hasValue;
 
-public:
+ public:
   Result(const T &value) : data(value), hasValue(true) {}
 
   Result(const E &error) : data(error), hasValue(false) {}
@@ -41,29 +42,30 @@ public:
   }
 };
 
-template <typename T> using ChfsResult = Result<T, ErrorType>;
+template <typename T>
+using ChfsResult = Result<T, ErrorType>;
 
 using ChfsNullResult = Result<std::monostate, ErrorType>;
 
 const ChfsNullResult KNullOk = ChfsNullResult(std::monostate());
 
-#define CHFS_HANDLE(RESULT_VAR, FUNCTION_CALL, ERROR_TYPE)                     \
-  {                                                                            \
-    auto temp_res = FUNCTION_CALL;                                             \
-    if (temp_res.is_err()) {                                                   \
-      return ERROR_TYPE(temp_res.unwrap_error());                              \
-    } else {                                                                   \
-      RESULT_VAR = temp_res.unwrap();                                          \
-    }                                                                          \
+#define CHFS_HANDLE(RESULT_VAR, FUNCTION_CALL, ERROR_TYPE) \
+  {                                                        \
+    auto temp_res = FUNCTION_CALL;                         \
+    if (temp_res.is_err()) {                               \
+      return ERROR_TYPE(temp_res.unwrap_error());          \
+    } else {                                               \
+      RESULT_VAR = temp_res.unwrap();                      \
+    }                                                      \
   }
 
-#define CHFS_HANDLE_NO_RETURN(FUNCTION_CALL, ERROR_TYPE)                       \
-  {                                                                            \
-    auto temp_res = FUNCTION_CALL;                                             \
-    if (temp_res.is_err()) {                                                   \
-      return ERROR_TYPE(temp_res.unwrap_error());                              \
-    } else {                                                                   \
-    }                                                                          \
+#define CHFS_HANDLE_NO_RETURN(FUNCTION_CALL, ERROR_TYPE) \
+  {                                                      \
+    auto temp_res = FUNCTION_CALL;                       \
+    if (temp_res.is_err()) {                             \
+      return ERROR_TYPE(temp_res.unwrap_error());        \
+    } else {                                             \
+    }                                                    \
   }
 
-} // namespace chfs
+}  // namespace chfs

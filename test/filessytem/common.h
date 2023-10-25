@@ -29,4 +29,4 @@ const usize KLargeFileMax = 512 * 100;
 
 inline auto get_test_seed() -> u64 { return 0xdeadbeaf; }
 
-} // namespace chfs
+}  // namespace chfs

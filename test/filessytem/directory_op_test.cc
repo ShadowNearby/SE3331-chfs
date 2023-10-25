@@ -52,8 +52,7 @@ TEST(FileSystemBase, UtilitiesRemove) {
 }
 
 TEST(FileSystemTest, DirectOperationAdd) {
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
   auto res = fs.alloc_inode(InodeType::Directory);
@@ -72,8 +71,7 @@ TEST(FileSystemTest, DirectOperationAdd) {
 }
 
 TEST(FileSystemTest, mkdir) {
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
   auto res = fs.alloc_inode(InodeType::Directory);
@@ -95,4 +93,4 @@ TEST(FileSystemTest, mkdir) {
   ASSERT_EQ(list.size(), 100);
 }
 
-} // namespace chfs
+}  // namespace chfs

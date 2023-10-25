@@ -11,13 +11,13 @@
 
 #pragma once
 
-#include "common/config.h"
-#include "common/macros.h"
-#include "rpc/msgpack.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <map>
 #include <random>
+#include "common/config.h"
+#include "common/macros.h"
+#include "rpc/msgpack.hpp"
 
 namespace chfs {
 
@@ -25,7 +25,7 @@ namespace chfs {
  * A simple random number generator
  */
 class RandomNumberGenerator {
-public:
+ public:
   RandomNumberGenerator() {
     std::random_device rd;
     seed.seed(rd());
@@ -36,7 +36,7 @@ public:
     return dist(seed);
   }
 
-private:
+ private:
   std::mt19937_64 seed;
 };
 
@@ -57,8 +57,7 @@ auto serialize_object(T const &object) -> std::vector<u8> {
 // Deserialize bytes to an `object`
 template <typename T>
 auto deserialize_object(std::vector<u8> const &bytes) -> T {
-  auto oh = clmdep_msgpack::unpack(reinterpret_cast<char const *>(bytes.data()),
-                                   bytes.size());
+  auto oh = clmdep_msgpack::unpack(reinterpret_cast<char const *>(bytes.data()), bytes.size());
   return oh.get().as<T>();
 }
 
@@ -78,12 +77,10 @@ inline auto is_file_exist(std::string const &name) -> bool {
  * @return: A tuple of first, last block index and others for dispatching
  * block requests.
  */
-inline auto dispatch_request(usize offset, usize size)
-    -> std::tuple<usize, usize, usize, usize> {
+inline auto dispatch_request(usize offset, usize size) -> std::tuple<usize, usize, usize, usize> {
   // First calculate the first and last block index
   auto first_block_index = ROUND_DOWN(offset, DiskBlockSize) / DiskBlockSize;
-  auto last_block_index =
-      ROUND_DOWN(offset + size, DiskBlockSize) / DiskBlockSize;
+  auto last_block_index = ROUND_DOWN(offset + size, DiskBlockSize) / DiskBlockSize;
 
   auto first_block_offset = offset - first_block_index * DiskBlockSize;
   auto last_block_size = offset + size - last_block_index * DiskBlockSize;
@@ -92,8 +89,7 @@ inline auto dispatch_request(usize offset, usize size)
     last_block_index -= 1;
     last_block_size = DiskBlockSize;
   }
-  return std::make_tuple(first_block_index, last_block_index,
-                         first_block_offset, last_block_size);
+  return std::make_tuple(first_block_index, last_block_index, first_block_offset, last_block_size);
 }
 
-} // namespace chfs
+}  // namespace chfs

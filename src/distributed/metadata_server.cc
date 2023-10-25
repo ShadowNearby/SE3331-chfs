@@ -135,8 +135,6 @@ auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
 
 // {Your code here}
 auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
-  auto buffer = std::vector<u8>(DiskBlockSize);
-  operation_->inode_manager_->get(id);
   auto mac_id = generator.rand(1, num_data_servers);
   auto call_res = clients_[mac_id]->call("alloc_block");
   auto res = std::reinterpret_pointer_cast<std::pair<block_id_t, version_t>>(call_res.unwrap());

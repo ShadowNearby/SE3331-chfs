@@ -39,7 +39,7 @@ class InodeManager {
   u64 n_table_blocks;
   u64 n_bitmap_blocks;
 
-public:
+ public:
   /**
    * Construct an InodeManager from scratch.
    * Note that it will initialize the blocks in the block manager.
@@ -56,8 +56,7 @@ public:
    *
    * The max_inode_supported can be found in the super block.
    */
-  static auto create_from_block_manager(std::shared_ptr<BlockManager> bm,
-                                        u64 max_inode_supported)
+  static auto create_from_block_manager(std::shared_ptr<BlockManager> bm, u64 max_inode_supported)
       -> ChfsResult<InodeManager>;
 
   /**
@@ -105,12 +104,9 @@ public:
   /**
    * The combined version of the above APIs
    */
-  auto get_type_attr(inode_id_t id)
-      -> ChfsResult<std::pair<InodeType, FileAttr>>;
+  auto get_type_attr(inode_id_t id) -> ChfsResult<std::pair<InodeType, FileAttr>>;
 
-  auto get_reserved_blocks() const -> usize {
-    return 1 + n_table_blocks + n_bitmap_blocks;
-  }
+  auto get_reserved_blocks() const -> usize { return 1 + n_table_blocks + n_bitmap_blocks; }
 
   // helper functions
 
@@ -120,21 +116,18 @@ public:
    */
   auto set_table(inode_id_t idx, block_id_t bid) -> ChfsNullResult;
 
-private:
+ private:
   /**
    * Simple constructors
    */
-  InodeManager(std::shared_ptr<BlockManager> bm, u64 max_inode_supported,
-               u64 ntables, u64 nbit)
-      : bm(bm), max_inode_supported(max_inode_supported),
-        n_table_blocks(ntables), n_bitmap_blocks(nbit) {}
+  InodeManager(std::shared_ptr<BlockManager> bm, u64 max_inode_supported, u64 ntables, u64 nbit)
+      : bm(bm), max_inode_supported(max_inode_supported), n_table_blocks(ntables), n_bitmap_blocks(nbit) {}
 
   /**
    * Read the inode to a buffer
    * @param block_id_t: the block id that stores the inode
    */
-  auto read_inode(inode_id_t id, std::vector<u8> &buffer)
-      -> ChfsResult<block_id_t>;
+  auto read_inode(inode_id_t id, std::vector<u8> &buffer) -> ChfsResult<block_id_t>;
 };
 
-} // namespace chfs
+}  // namespace chfs

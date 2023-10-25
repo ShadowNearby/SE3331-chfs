@@ -5,7 +5,7 @@
 namespace chfs {
 
 class BlockAllocatorTest : public ::testing::Test {
-protected:
+ protected:
   // This function is called before every test.
   void SetUp() override {}
 
@@ -18,22 +18,19 @@ TEST_F(BlockAllocatorTest, Init) {
   const usize block_sz = 4096;
   const usize block_cnt = 1024 * 1024;
 
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
 
   auto allocator = BlockAllocator(bm);
   auto bitmap_block_cnt = allocator.total_bitmap_block();
   EXPECT_EQ(allocator.free_block_cnt(), bm->total_blocks() - bitmap_block_cnt);
 
-  auto bm1 =
-      std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
+  auto bm1 = std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
 
   // we reserve the first blocks for other purpose
   usize reserved_block = 1;
   auto allocator_1 = BlockAllocator(bm1, reserved_block);
   auto bitmap_block_cnt1 = allocator_1.total_bitmap_block();
-  EXPECT_EQ(allocator_1.free_block_cnt(),
-            bm1->total_blocks() - bitmap_block_cnt1 - reserved_block);
+  EXPECT_EQ(allocator_1.free_block_cnt(), bm1->total_blocks() - bitmap_block_cnt1 - reserved_block);
   EXPECT_EQ(allocator_1.free_block_cnt() + 1, allocator.free_block_cnt());
 }
 
@@ -43,8 +40,7 @@ TEST_F(BlockAllocatorTest, Allocation) {
   // we use a smaller block cnt to reduce the test time
   // more complex tests are placed in the stress-test/allocator.cc
   const usize block_cnt = 1024;
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
 
   auto allocator = BlockAllocator(bm);
   auto bitmap_block_cnt = allocator.total_bitmap_block();
@@ -66,4 +62,4 @@ TEST_F(BlockAllocatorTest, Allocation) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

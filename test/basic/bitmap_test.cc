@@ -60,4 +60,4 @@ TEST(BasicTest, BitmapFree) {
   delete[] data;
 }
 
-} // namespace chfs
+}  // namespace chfs

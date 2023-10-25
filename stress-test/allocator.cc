@@ -9,8 +9,7 @@ namespace chfs {
 TEST(BlockAllocatorTest, StressTest1) {
   const usize block_sz = 4096;
   const usize block_cnt = 1024 * 1024;
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(block_cnt, block_sz));
 
   auto allocator = BlockAllocator(bm);
   auto bitmap_block_cnt = allocator.total_bitmap_block();
@@ -38,8 +37,7 @@ TEST(BlockAllocatorTest, StressTest1) {
       ASSERT_TRUE(block.is_ok());
 
       if (active_blocks.find(block.unwrap()) != active_blocks.end()) {
-        std::cerr << "Block allocated twice for: " << block.unwrap()
-                  << std::endl;
+        std::cerr << "Block allocated twice for: " << block.unwrap() << std::endl;
         FAIL();
       }
       active_blocks.insert(block.unwrap());
@@ -58,11 +56,10 @@ TEST(BlockAllocatorTest, StressTest1) {
   // some final checks
   auto after_free_blocks = allocator.free_block_cnt();
   ASSERT_EQ(after_free_blocks + active_blocks.size(), before_free_blocks);
-  std::cout << "Final check: active_blocks count: " << active_blocks.size()
-            << std::endl;
+  std::cout << "Final check: active_blocks count: " << active_blocks.size() << std::endl;
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 int main(int argc, char **argv) {
   // Initialize Google Test

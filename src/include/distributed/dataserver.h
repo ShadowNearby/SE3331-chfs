@@ -11,11 +11,11 @@
 
 #pragma once
 
+#include <mutex>
 #include "block/allocator.h"
 #include "common/config.h"
 #include "common/result.h"
 #include "librpc/server.h"
-#include <mutex>
 namespace chfs {
 
 /**
@@ -27,16 +27,15 @@ namespace chfs {
  * block creation and deletion from the `MetadataServer`.
  */
 class DataServer {
-
-protected:
-  const size_t num_worker_threads = 4; // worker threads for rpc handlers
+ protected:
+  const size_t num_worker_threads = 4;  // worker threads for rpc handlers
 
   /**
    * The common logic in constructor
    */
   auto initialize(std::string const &data_path);
 
-public:
+ public:
   /**
    * Start a data server that listens on `localhost` with the given port.
    *
@@ -58,8 +57,7 @@ public:
    * @param port: The port number to listen to.
    * @param data_path: The file path where truly store data.
    */
-  DataServer(const std::string &address, u16 port,
-             const std::string &data_path = "/tmp/block_data");
+  DataServer(const std::string &address, u16 port, const std::string &data_path = "/tmp/block_data");
 
   /**
    * Destructor. Close the rpc server gracefully.
@@ -85,8 +83,7 @@ public:
    * @return: Return the content in the block if valid, otherwise return
    * a 0-size vector(client wouldn't allow to read a data whose size is 0)
    */
-  auto read_data(block_id_t block_id, usize offset, usize len,
-                 version_t version) -> std::vector<u8>;
+  auto read_data(block_id_t block_id, usize offset, usize len, version_t version) -> std::vector<u8>;
 
   /**
    * A RPC handler for client. Write a piece of data in a given block.
@@ -97,8 +94,7 @@ public:
    *
    * @return: Whether the write request is valid or not
    */
-  auto write_data(block_id_t block_id, usize offset, std::vector<u8> &buffer)
-      -> bool;
+  auto write_data(block_id_t block_id, usize offset, std::vector<u8> &buffer) -> bool;
 
   /**
    * A RPC handler for metadata server. Allocate a block on this server.
@@ -116,9 +112,9 @@ public:
    */
   auto free_block(block_id_t block_id) -> bool;
 
-private:
+ private:
   std::unique_ptr<RpcServer> server_;
   std::shared_ptr<BlockAllocator> block_allocator_;
 };
 
-} // namespace chfs
+}  // namespace chfs

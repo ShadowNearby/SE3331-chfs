@@ -10,8 +10,7 @@ TEST(FileSystemTest, CreateAndGetAttr) {
   std::mt19937 rng(get_test_seed());
   std::uniform_int_distribution<int> uni(0, 100);
 
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
   for (usize i = 0; i < kFileNum; i++) {
@@ -37,4 +36,4 @@ TEST(FileSystemTest, CreateAndGetAttr) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

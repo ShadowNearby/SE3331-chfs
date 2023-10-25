@@ -10,10 +10,6 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
-#include "block/manager.h"
-#include "common/config.h"
-#include "common/macros.h"
-#include "filesystem/operations.h"
 #include <atomic>
 #include <fstream>
 #include <iostream>
@@ -22,6 +18,10 @@
 #include <mutex>
 #include <unordered_set>
 #include <vector>
+#include "block/manager.h"
+#include "common/config.h"
+#include "common/macros.h"
+#include "filesystem/operations.h"
 
 namespace chfs {
 /**
@@ -30,7 +30,7 @@ namespace chfs {
  * the system is crashed.
  */
 class BlockOperation {
-public:
+ public:
   explicit BlockOperation(block_id_t block_id, std::vector<u8> new_block_state)
       : block_id_(block_id), new_block_state_(new_block_state) {
     CHFS_ASSERT(new_block_state.size() == DiskBlockSize, "invalid block state");
@@ -46,12 +46,10 @@ public:
  * is crashed.
  */
 class CommitLog {
-public:
-  explicit CommitLog(std::shared_ptr<BlockManager> bm,
-                     bool is_checkpoint_enabled);
+ public:
+  explicit CommitLog(std::shared_ptr<BlockManager> bm, bool is_checkpoint_enabled);
   ~CommitLog();
-  auto append_log(txn_id_t txn_id,
-                  std::vector<std::shared_ptr<BlockOperation>> ops) -> void;
+  auto append_log(txn_id_t txn_id, std::vector<std::shared_ptr<BlockOperation>> ops) -> void;
   auto commit_log(txn_id_t txn_id) -> void;
   auto checkpoint() -> void;
   auto recover() -> void;
@@ -64,4 +62,4 @@ public:
    */
 };
 
-} // namespace chfs
+}  // namespace chfs

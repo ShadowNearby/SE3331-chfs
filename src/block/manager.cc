@@ -1,9 +1,9 @@
-#include <cstring>
 #include <fcntl.h>
-#include <filesystem>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstring>
+#include <filesystem>
 
 #include "block/manager.h"
 
@@ -28,8 +28,7 @@ auto initialize_file(int fd, u64 total_file_sz) {
  * Constructor: open/create a single database file & log file
  * @input db_file: database file name
  */
-BlockManager::BlockManager(const std::string &file)
-    : BlockManager(file, KDefaultBlockCnt) {}
+BlockManager::BlockManager(const std::string &file) : BlockManager(file, KDefaultBlockCnt) {}
 
 /**
  * Creates a new block manager that writes to a file-backed block device.
@@ -39,8 +38,7 @@ BlockManager::BlockManager(const std::string &file)
  * actual block cnt.
  */
 BlockManager::BlockManager(usize block_cnt, usize block_size)
-    : block_sz(block_size), file_name_("in-memory"), fd(-1),
-      block_cnt(block_cnt), in_memory(true) {
+    : block_sz(block_size), file_name_("in-memory"), fd(-1), block_cnt(block_cnt), in_memory(true) {
   // An important step to prevent overflow
   this->write_fail_cnt = 0;
   this->maybe_failed = false;
@@ -66,18 +64,15 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt)
     initialize_file(this->fd, this->total_storage_sz());
   } else {
     this->block_cnt = file_sz / this->block_sz;
-    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz,
-                "The file size mismatches");
+    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz, "The file size mismatches");
   }
 
   this->block_data =
-      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(),
-                             PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
+      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(), PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
   CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
 }
 
-BlockManager::BlockManager(const std::string &file, usize block_cnt,
-                           bool is_log_enabled)
+BlockManager::BlockManager(const std::string &file, usize block_cnt, bool is_log_enabled)
     : file_name_(file), block_cnt(block_cnt), in_memory(false) {
   this->write_fail_cnt = 0;
   this->maybe_failed = false;
@@ -91,18 +86,15 @@ BlockManager::BlockManager(const std::string &file, usize block_cnt,
     initialize_file(this->fd, this->total_storage_sz());
   } else {
     this->block_cnt = file_sz / this->block_sz;
-    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz,
-                "The file size mismatches");
+    CHFS_ASSERT(this->total_storage_sz() == KDefaultBlockCnt * this->block_sz, "The file size mismatches");
   }
 
   this->block_data =
-      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(),
-                             PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
+      static_cast<u8 *>(mmap(nullptr, this->total_storage_sz(), PROT_READ | PROT_WRITE, MAP_SHARED, this->fd, 0));
   CHFS_ASSERT(this->block_data != MAP_FAILED, "Failed to mmap the data");
 }
 
-auto BlockManager::write_block(block_id_t block_id, const u8 *data)
-    -> ChfsNullResult {
+auto BlockManager::write_block(block_id_t block_id, const u8 *data) -> ChfsNullResult {
   if (this->maybe_failed && block_id < this->block_cnt) {
     if (this->write_fail_cnt >= 3) {
       this->write_fail_cnt = 0;
@@ -114,9 +106,7 @@ auto BlockManager::write_block(block_id_t block_id, const u8 *data)
   return KNullOk;
 }
 
-auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
-                                       usize offset, usize len)
-    -> ChfsNullResult {
+auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data, usize offset, usize len) -> ChfsNullResult {
   if (this->maybe_failed && block_id < this->block_cnt) {
     if (this->write_fail_cnt >= 3) {
       this->write_fail_cnt = 0;
@@ -129,16 +119,12 @@ auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data,
 }
 
 auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
-
-  std::copy(block_data + block_id * block_sz,
-            block_data + (block_id + 1) * block_sz, data);
+  std::copy(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz, data);
   return KNullOk;
 }
 
 auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
-
-  std::transform(block_data + block_id * block_sz,
-                 block_data + (block_id + 1) * block_sz,
+  std::transform(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz,
                  block_data + block_id * block_sz, [](auto ch) { return 0; });
   return KNullOk;
 }
@@ -148,18 +134,14 @@ auto BlockManager::sync(block_id_t block_id) -> ChfsNullResult {
     return ChfsNullResult(ErrorType::INVALID_ARG);
   }
 
-  auto res = msync(this->block_data + block_id * this->block_sz, this->block_sz,
-                   MS_SYNC | MS_INVALIDATE);
-  if (res != 0)
-    return ChfsNullResult(ErrorType::INVALID);
+  auto res = msync(this->block_data + block_id * this->block_sz, this->block_sz, MS_SYNC | MS_INVALIDATE);
+  if (res != 0) return ChfsNullResult(ErrorType::INVALID);
   return KNullOk;
 }
 
 auto BlockManager::flush() -> ChfsNullResult {
-  auto res = msync(this->block_data, this->block_sz * this->block_cnt,
-                   MS_SYNC | MS_INVALIDATE);
-  if (res != 0)
-    return ChfsNullResult(ErrorType::INVALID);
+  auto res = msync(this->block_data, this->block_sz * this->block_cnt, MS_SYNC | MS_INVALIDATE);
+  if (res != 0) return ChfsNullResult(ErrorType::INVALID);
   return KNullOk;
 }
 
@@ -173,8 +155,7 @@ BlockManager::~BlockManager() {
 }
 
 // BlockIterator
-auto BlockIterator::create(BlockManager *bm, block_id_t start_block_id,
-                           block_id_t end_block_id)
+auto BlockIterator::create(BlockManager *bm, block_id_t start_block_id, block_id_t end_block_id)
     -> ChfsResult<BlockIterator> {
   BlockIterator iter;
   iter.bm = bm;
@@ -184,8 +165,7 @@ auto BlockIterator::create(BlockManager *bm, block_id_t start_block_id,
 
   std::vector<u8> buffer(bm->block_sz);
 
-  auto res = bm->read_block(iter.cur_block_off / bm->block_sz + start_block_id,
-                            buffer.data());
+  auto res = bm->read_block(iter.cur_block_off / bm->block_sz + start_block_id, buffer.data());
   if (res.is_ok()) {
     iter.buffer = std::move(buffer);
     return ChfsResult<BlockIterator>(iter);
@@ -206,8 +186,7 @@ auto BlockIterator::next(usize offset) -> ChfsNullResult {
     }
 
     // else: we need to refresh the buffer
-    auto res = bm->read_block(this->start_block_id + new_block_id,
-                              this->buffer.data());
+    auto res = bm->read_block(this->start_block_id + new_block_id, this->buffer.data());
     if (res.is_err()) {
       return ChfsNullResult(res.unwrap_error());
     }
@@ -215,4 +194,4 @@ auto BlockIterator::next(usize offset) -> ChfsNullResult {
   return KNullOk;
 }
 
-} // namespace chfs
+}  // namespace chfs

@@ -12,8 +12,7 @@ TEST(FileSystemTest, Remove) {
   std::uniform_int_distribution<int> uni(0, 100);
   std::vector<inode_id_t> id_list;
 
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
   auto free_block_cnt = fs.get_free_blocks_num().unwrap();
   ASSERT_GE(free_block_cnt, 0);
@@ -60,4 +59,4 @@ TEST(FileSystemTest, Remove) {
   ASSERT_EQ(free_block_cnt_after_2, free_block_cnt);
 }
 
-} // namespace chfs
+}  // namespace chfs

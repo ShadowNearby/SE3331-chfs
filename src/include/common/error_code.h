@@ -43,4 +43,4 @@ enum class ErrorType {
   NotPermitted = 9,
 };
 
-} // namespace chfs
+}  // namespace chfs

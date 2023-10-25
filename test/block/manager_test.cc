@@ -1,12 +1,12 @@
 #include "block/manager.h"
+#include <cstring>
 #include "common/macros.h"
 #include "gtest/gtest.h"
-#include <cstring>
 
 namespace chfs {
 
 class BlockManagerTest : public ::testing::Test {
-protected:
+ protected:
   // This function is called before every test.
   void SetUp() override {
     // remove("test.db");
@@ -109,4 +109,4 @@ TEST_F(BlockManagerTest, Iterator) {
   }
 }
 
-} // namespace chfs
+}  // namespace chfs
