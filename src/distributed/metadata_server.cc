@@ -100,6 +100,9 @@ MetadataServer::MetadataServer(std::string const &address, u16 port, const std::
 // {Your code here}
 auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name) -> inode_id_t {
   auto res = operation_->mk_helper(parent, name.c_str(), InodeType(type));
+  if (res.is_err()) {
+    return KInvalidInodeID;
+  }
   return res.unwrap();
 }
 
