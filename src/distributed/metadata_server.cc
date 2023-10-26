@@ -134,7 +134,11 @@ auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
   operation_->block_manager_->read_block(inode->mac_block_id, mac_buffer.data());
   std::vector<BlockInfo> result{};
   for (u32 i = 0; i < inode->current_block_idx; ++i) {
-    result.emplace_back(*(inode->blocks + i), *((mac_id_t *)mac_buffer.data() + i), 0);
+    if (*(inode->blocks + i) == KInvalidBlockID) {
+      continue;
+    }
+    auto meta = *((BlockMeta *)mac_buffer.data() + i);
+    result.emplace_back(*(inode->blocks + i), meta.first, meta.second);
   }
   return result;
 }
@@ -158,17 +162,32 @@ auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
   inode->current_block_idx = inode->current_block_idx + 1;
   operation_->block_manager_->write_block(inode_block_id, buffer.data());
   operation_->block_manager_->read_block(mac_block_id, buffer.data());
-  *((mac_id_t *)buffer.data() + current_block_idx) = mac_id;
+  *((BlockMeta *)buffer.data() + current_block_idx) = std::make_pair(mac_id, res.second);
   operation_->block_manager_->write_block(mac_block_id, buffer.data());
   return res_block_info;
 }
 
 // {Your code here}
 auto MetadataServer::free_block(inode_id_t id, block_id_t block_id, mac_id_t machine_id) -> bool {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
-
-  return false;
+  auto call_res = clients_[machine_id]->call("free_block").unwrap()->as<bool>();
+  if (!call_res) {
+    return false;
+  }
+  auto buffer = std::vector<u8>(DiskBlockSize);
+  auto mac_buffer = std::vector<u8>(DiskBlockSize);
+  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
+  operation_->block_manager_->read_block(inode_block_id, buffer.data());
+  auto inode = reinterpret_cast<Inode *>(buffer.data());
+  CHFS_ASSERT(inode->mac_block_id != KInvalidBlockID, "error");
+  operation_->block_manager_->read_block(inode->mac_block_id, mac_buffer.data());
+  for (u32 i = 0; i < inode->current_block_idx; ++i) {
+    if (inode->blocks[i] == block_id && ((BlockMeta *)(mac_buffer.data()) + i)->first == machine_id) {
+      inode->blocks[i] = KInvalidBlockID;
+      break;
+    }
+  }
+  operation_->block_manager_->write_block(machine_id, buffer.data());
+  return true;
 }
 
 // {Your code here}

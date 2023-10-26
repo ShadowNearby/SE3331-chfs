@@ -56,6 +56,7 @@ const u8 RegularFileType = 1;
 const u8 DirectoryType = 2;
 
 using BlockInfo = std::tuple<block_id_t, mac_id_t, version_t>;
+using BlockMeta = std::pair<mac_id_t, version_t>;
 
 class MetadataServer {
   const size_t num_worker_threads = 4;  // worker threads for rpc handlers
