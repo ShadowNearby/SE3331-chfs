@@ -148,6 +148,21 @@ TEST_F(MetadataServerTest, CheckPersist) {
   clean_data();
 }
 
+TEST_F(MetadataServerTest, Delete) {
+  auto file_id_1 = meta_srv->mknode(RegularFileType, 1, "fileA");
+  EXPECT_EQ(file_id_1, 2);
+  for (int i = 0; i < 100; i++) {
+    auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
+    EXPECT_GT(machine_id, 0);
+    EXPECT_LT(machine_id, 4);
+    auto del_res = meta_srv->free_block(file_id_1, block_id, machine_id);
+    EXPECT_EQ(del_res, true);
+  }
+  auto block_map_1 = meta_srv->get_block_map(file_id_1);
+  EXPECT_EQ(block_map_1.size(), 0);
+  clean_data();
+}
+
 TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
   // Create file and also write some data
   auto file_id = meta_srv->mknode(RegularFileType, 1, "fileA");

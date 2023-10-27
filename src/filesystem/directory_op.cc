@@ -185,7 +185,7 @@ auto FileOperation::unlink(inode_id_t parent, const char *name) -> ChfsNullResul
   }
   auto res = rm_from_directory(src, std::string{name});
   buffer.clear();
-  buffer = std::vector<uint8_t>{res.begin(), res.end()};
+  buffer = std::vector<uint8_t>(res.begin(), res.end());
   this->write_file(parent, buffer);
   // 1. Remove the file, you can use the function `remove_file`
   // 2. Remove the entry from the directory.

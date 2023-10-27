@@ -99,6 +99,7 @@ MetadataServer::MetadataServer(std::string const &address, u16 port, const std::
 
 // {Your code here}
 auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name) -> inode_id_t {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   auto res = operation_->mk_helper(parent, name.c_str(), InodeType(type));
   if (res.is_err()) {
     return KInvalidInodeID;
@@ -108,6 +109,7 @@ auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name)
 
 // {Your code here}
 auto MetadataServer::unlink(inode_id_t parent, const std::string &name) -> bool {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   auto res = operation_->unlink(parent, name.c_str());
   if (res.is_ok()) {
     return true;
@@ -117,6 +119,7 @@ auto MetadataServer::unlink(inode_id_t parent, const std::string &name) -> bool 
 
 // {Your code here}
 auto MetadataServer::lookup(inode_id_t parent, const std::string &name) -> inode_id_t {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   auto res = operation_->lookup(parent, name.c_str());
   if (res.is_err()) {
     return KInvalidInodeID;
@@ -126,75 +129,54 @@ auto MetadataServer::lookup(inode_id_t parent, const std::string &name) -> inode
 
 // {Your code here}
 auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
-  auto buffer = std::vector<u8>(DiskBlockSize);
-  auto mac_buffer = std::vector<u8>(DiskBlockSize);
-  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
-  operation_->block_manager_->read_block(inode_block_id, buffer.data());
-  auto inode = reinterpret_cast<Inode *>(buffer.data());
-  if (inode->mac_block_id == KInvalidBlockID) {
-    return {};
-  }
-  operation_->block_manager_->read_block(inode->mac_block_id, mac_buffer.data());
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
+  auto buffer = operation_->read_file(id).unwrap();
   std::vector<BlockInfo> result{};
-  for (u32 i = 0; i < inode->current_block_idx; ++i) {
-    if (*(inode->blocks + i) == KInvalidBlockID) {
-      continue;
+  for (u32 i = 0; i < buffer.size() / (sizeof(BlockInfo) / sizeof(u8)); ++i) {
+    auto info = *((BlockInfo *)buffer.data() + i);
+    if (std::get<0>(info) != 0) {
+      result.emplace_back(info);
     }
-    auto meta = *((BlockMeta *)mac_buffer.data() + i);
-    result.emplace_back(*(inode->blocks + i), meta.first, meta.second);
   }
   return result;
 }
 
 // {Your code here}
 auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   auto mac_id = generator.rand(1, num_data_servers);
   auto call_res = clients_[mac_id]->call("alloc_block");
   auto res = call_res.unwrap()->as<std::pair<block_id_t, version_t>>();
   auto res_block_info = BlockInfo{res.first, mac_id, res.second};
-  auto buffer = std::vector<u8>(DiskBlockSize);
-  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
-  operation_->block_manager_->read_block(inode_block_id, buffer.data());
-  auto inode = reinterpret_cast<Inode *>(buffer.data());
-  if (inode->mac_block_id == KInvalidBlockID) {
-    inode->mac_block_id = operation_->block_allocator_->allocate().unwrap();
-  }
-  inode->blocks[inode->current_block_idx] = res.first;
-  auto mac_block_id = inode->mac_block_id;
-  auto current_block_idx = inode->current_block_idx;
-  inode->current_block_idx = inode->current_block_idx + 1;
-  operation_->block_manager_->write_block(inode_block_id, buffer.data());
-  operation_->block_manager_->read_block(mac_block_id, buffer.data());
-  *((BlockMeta *)buffer.data() + current_block_idx) = std::make_pair(mac_id, res.second);
-  operation_->block_manager_->write_block(mac_block_id, buffer.data());
+  auto buffer = operation_->read_file(id).unwrap();
+  auto info_buffer = std::vector<u8>(sizeof(BlockInfo) / sizeof(u8));
+  *((BlockInfo *)info_buffer.data()) = res_block_info;
+  buffer.insert(buffer.end(), info_buffer.begin(), info_buffer.end());
+  operation_->write_file(id, buffer);
   return res_block_info;
 }
 
 // {Your code here}
 auto MetadataServer::free_block(inode_id_t id, block_id_t block_id, mac_id_t machine_id) -> bool {
-  auto call_res = clients_[machine_id]->call("free_block").unwrap()->as<bool>();
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
+  auto call_res = clients_[machine_id]->call("free_block", block_id).unwrap()->as<bool>();
   if (!call_res) {
     return false;
   }
-  auto buffer = std::vector<u8>(DiskBlockSize);
-  auto mac_buffer = std::vector<u8>(DiskBlockSize);
-  auto inode_block_id = operation_->inode_manager_->get(id).unwrap();
-  operation_->block_manager_->read_block(inode_block_id, buffer.data());
-  auto inode = reinterpret_cast<Inode *>(buffer.data());
-  CHFS_ASSERT(inode->mac_block_id != KInvalidBlockID, "error");
-  operation_->block_manager_->read_block(inode->mac_block_id, mac_buffer.data());
-  for (u32 i = 0; i < inode->current_block_idx; ++i) {
-    if (inode->blocks[i] == block_id && ((BlockMeta *)(mac_buffer.data()) + i)->first == machine_id) {
-      inode->blocks[i] = KInvalidBlockID;
-      break;
+  auto buffer = operation_->read_file(id).unwrap();
+  for (u32 i = 0; i < buffer.size() / (sizeof(BlockInfo) / sizeof(u8)); ++i) {
+    auto [block, mac, version] = *((BlockInfo *)buffer.data() + i);
+    if (block == block_id && mac == machine_id) {
+      *((BlockInfo *)buffer.data() + i) = std::make_tuple(0, 0, 0);
     }
   }
-  operation_->block_manager_->write_block(machine_id, buffer.data());
+  operation_->write_file(id, buffer);
   return true;
 }
 
 // {Your code here}
 auto MetadataServer::readdir(inode_id_t node) -> std::vector<std::pair<std::string, inode_id_t>> {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   std::list<DirectoryEntry> list;
   std::vector<std::pair<std::string, inode_id_t>> result;
   read_directory(operation_.get(), node, list);
@@ -206,15 +188,16 @@ auto MetadataServer::readdir(inode_id_t node) -> std::vector<std::pair<std::stri
 
 // {Your code here}
 auto MetadataServer::get_type_attr(inode_id_t id) -> std::tuple<u64, u64, u64, u64, u8> {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   auto [type, attr] = operation_->inode_manager_->get_type_attr(id).unwrap();
   return {attr.size, attr.atime, attr.mtime, attr.ctime, static_cast<u64>(type)};
 }
 
 auto MetadataServer::reg_server(const std::string &address, u16 port, bool reliable) -> bool {
+  std::scoped_lock<std::shared_mutex> lock(mtx_);
   num_data_servers += 1;
   auto cli = std::make_shared<RpcClient>(address, port, reliable);
   clients_.insert(std::make_pair(num_data_servers, cli));
-
   return true;
 }
 

@@ -90,7 +90,6 @@ class Inode {
   // which is dynamically calculated based on the block size
 
  public:
-  block_id_t mac_block_id;
   u32 current_block_idx{0};
   [[maybe_unused]] block_id_t blocks[0];
 
@@ -100,8 +99,7 @@ class Inode {
    * @param type: the inode type
    * @param block_size: the size of the block that stored the inode
    */
-  Inode(InodeType type, usize block_size)
-      : type(type), inner_attr(), block_size(block_size), mac_block_id(KInvalidBlockID) {
+  Inode(InodeType type, usize block_size) : type(type), inner_attr(), block_size(block_size) {
     CHFS_VERIFY(block_size > sizeof(Inode), "Block size too small");
     nblocks = (block_size - sizeof(Inode)) / sizeof(block_id_t);
     inner_attr.set_all_time(time(0));
@@ -223,8 +221,7 @@ class Inode {
 
 } __attribute__((packed));
 
-static_assert(sizeof(Inode) ==
-                  sizeof(FileAttr) + sizeof(InodeType) + sizeof(u32) + sizeof(u32) + sizeof(block_id_t) + sizeof(u32),
+static_assert(sizeof(Inode) == sizeof(FileAttr) + sizeof(InodeType) + sizeof(u32) + sizeof(u32) + sizeof(u32),
               "Unexpected Inode size");
 
 /**

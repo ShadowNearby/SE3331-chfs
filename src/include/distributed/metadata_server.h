@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <shared_mutex>
 #include "common/config.h"
 #include "common/util.h"
 #include "distributed/commit_log.h"
@@ -56,7 +57,6 @@ const u8 RegularFileType = 1;
 const u8 DirectoryType = 2;
 
 using BlockInfo = std::tuple<block_id_t, mac_id_t, version_t>;
-using BlockMeta = std::pair<mac_id_t, version_t>;
 
 class MetadataServer {
   const size_t num_worker_threads = 4;  // worker threads for rpc handlers
@@ -236,7 +236,7 @@ class MetadataServer {
   bool is_log_enabled_;
   bool may_failed_;
   [[maybe_unused]] bool is_checkpoint_enabled_;
-
+  std::shared_mutex mtx_;
   /**
    * {You can add anything you want here}
    */
