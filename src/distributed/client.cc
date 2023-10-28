@@ -90,14 +90,11 @@ auto ChfsClient::read_file(inode_id_t id, usize offset, usize size) -> ChfsResul
   auto block_maps = call_result.unwrap()->as<std::vector<BlockInfo>>();
   auto result = std::vector<u8>(size);
   usize read_size = 0;
-  for (const auto &block_map : block_maps) {
+  for (const auto &[block_id, mac_id, version] : block_maps) {
     if (offset > DiskBlockSize) {
       offset -= DiskBlockSize;
       continue;
     }
-    block_id_t block_id = std::get<0>(block_map);
-    mac_id_t mac_id = std::get<1>(block_map);
-    version_t version = std::get<2>(block_map);
     if (DiskBlockSize - offset > size) {
       auto data_call = data_servers_[mac_id]->call("read_data", block_id, offset, size, version);
       if (data_call.is_err()) {
@@ -181,8 +178,10 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data) -
 
 // {Your code here}
 auto ChfsClient::free_file_block(inode_id_t id, block_id_t block_id, mac_id_t mac_id) -> ChfsNullResult {
-  // TODO: Implement this function.
-  UNIMPLEMENTED();
+  auto call = metadata_server_->call("free_block", id, block_id, mac_id);
+  if (call.is_err()) {
+    return ChfsNullResult{call.unwrap_error()};
+  }
   return KNullOk;
 }
 

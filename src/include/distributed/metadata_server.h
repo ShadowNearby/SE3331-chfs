@@ -236,7 +236,8 @@ class MetadataServer {
   bool is_log_enabled_;
   bool may_failed_;
   [[maybe_unused]] bool is_checkpoint_enabled_;
-  std::shared_mutex mtx_;
+  std::shared_mutex meta_mtx_;
+  std::vector<std::shared_mutex> server_mtx_;
   /**
    * {You can add anything you want here}
    */

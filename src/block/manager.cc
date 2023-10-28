@@ -101,7 +101,8 @@ auto BlockManager::write_block(block_id_t block_id, const u8 *data) -> ChfsNullR
       return KNullOk;
     }
   }
-  std::copy(data, data + block_sz, block_data + block_id * block_sz);
+  memcpy(block_data + block_id * block_sz, data, block_sz);
+  //  std::copy(data, data + block_sz, block_data + block_id * block_sz);
   this->write_fail_cnt++;
   return KNullOk;
 }
@@ -113,19 +114,22 @@ auto BlockManager::write_partial_block(block_id_t block_id, const u8 *data, usiz
       return KNullOk;
     }
   }
-  std::copy(data, data + len, block_data + block_id * block_sz + offset);
+  //  std::copy(data, data + len, block_data + block_id * block_sz + offset);
+  memcpy(block_data + block_id * block_sz + offset, data, len);
   this->write_fail_cnt++;
   return KNullOk;
 }
 
 auto BlockManager::read_block(block_id_t block_id, u8 *data) -> ChfsNullResult {
-  std::copy(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz, data);
+  memcpy(data, block_data + block_id * block_sz, block_sz);
+  //  std::copy(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz, data);
   return KNullOk;
 }
 
 auto BlockManager::zero_block(block_id_t block_id) -> ChfsNullResult {
-  std::transform(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz,
-                 block_data + block_id * block_sz, [](auto ch) { return 0; });
+  memset(block_data + block_id * block_sz, 0, block_sz);
+  //  std::transform(block_data + block_id * block_sz, block_data + (block_id + 1) * block_sz,
+  //                 block_data + block_id * block_sz, [](auto ch) { return 0; });
   return KNullOk;
 }
 

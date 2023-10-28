@@ -1,6 +1,7 @@
 #include "filesystem/directory_op.h"
 #include <algorithm>
 #include <sstream>
+#include "common/logger.h"
 #include "fmt/core.h"
 
 namespace chfs {
@@ -144,6 +145,7 @@ auto FileOperation::mk_helper(inode_id_t id, const char *name, InodeType type) -
     return ChfsResult<inode_id_t>{block_id_res.unwrap_error()};
   }
   auto block_id = block_id_res.unwrap();
+  //  LOG_FORMAT_INFO("alloc inode block id {}", block_id);
   auto inode_id_res = this->inode_manager_->allocate_inode(type, block_id);
   if (inode_id_res.is_err()) {
     return ChfsResult<inode_id_t>{inode_id_res.unwrap_error()};
@@ -178,8 +180,9 @@ auto FileOperation::unlink(inode_id_t parent, const char *name) -> ChfsNullResul
   std::list<DirectoryEntry> list;
   parse_directory(src, list);
   for (const auto &item : list) {
-    if (strcmp(name, item.name.c_str()) == 0) {
-      inode_manager_->free_inode(item.id);
+    if (name == item.name) {
+      //      LOG_FORMAT_INFO("name {} list name {} inode id {}", name, item.name, item.id);
+      remove_file(item.id);
       break;
     }
   }

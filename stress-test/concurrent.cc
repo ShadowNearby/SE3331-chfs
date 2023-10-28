@@ -36,6 +36,7 @@ class MetadataConcurrentStressTest : public ::testing::Test {
 
   // Init the whole system
   void init_sys() {
+    clean_data();
     meta_srv = std::make_shared<MetadataServer>(meta_port, inode_path);
     data_srv1 = std::make_shared<DataServer>(data_ports[0], data_path1);
     data_srv2 = std::make_shared<DataServer>(data_ports[1], data_path2);
