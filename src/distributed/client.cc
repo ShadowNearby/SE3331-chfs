@@ -31,6 +31,9 @@ auto ChfsClient::mknode(FileType type, inode_id_t parent, const std::string &nam
     return ChfsResult<inode_id_t>{call_res.unwrap_error()};
   }
   auto res = call_res.unwrap()->as<inode_id_t>();
+  if (res == 0) {
+    return ChfsResult<inode_id_t>{ErrorType::AlreadyExist};
+  }
   return ChfsResult<inode_id_t>{res};
 }
 
@@ -54,6 +57,9 @@ auto ChfsClient::lookup(inode_id_t parent, const std::string &name) -> ChfsResul
     return ChfsResult<inode_id_t>{call_res.unwrap_error()};
   }
   auto res = call_res.unwrap()->as<inode_id_t>();
+  if (res == 0) {
+    return ChfsResult<inode_id_t>{ErrorType::INVALID};
+  }
   return ChfsResult<inode_id_t>{res};
 }
 

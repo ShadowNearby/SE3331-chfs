@@ -119,16 +119,13 @@ auto MetadataServer::unlink(inode_id_t parent, const std::string &name) -> bool 
 
 // {Your code here}
 auto MetadataServer::lookup(inode_id_t parent, const std::string &name) -> inode_id_t {
+  std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
   inode_id_t res_val;
-  {
-    meta_mtx_.lock_shared();
-    auto res = operation_->lookup(parent, name.c_str());
-    meta_mtx_.lock_shared();
-    if (res.is_err()) {
-      return KInvalidInodeID;
-    }
-    res_val = res.unwrap();
+  auto res = operation_->lookup(parent, name.c_str());
+  if (res.is_err()) {
+    return KInvalidInodeID;
   }
+  res_val = res.unwrap();
   return res_val;
 }
 
@@ -161,25 +158,26 @@ auto MetadataServer::allocate_block(inode_id_t id) -> BlockInfo {
   }
   auto res = call_res.unwrap()->as<std::pair<block_id_t, version_t>>();
   auto res_block_info = BlockInfo{res.first, mac_id, res.second};
-  auto buffer = std::vector<u8>();
   {
-    meta_mtx_.lock_shared();
-    operation_->read_file(id).unwrap();
-    meta_mtx_.unlock_shared();
-  }
-  for (u32 i = 0; i < buffer.size() / (sizeof(BlockInfo) / sizeof(u8)); ++i) {
-    auto [block, mac, version] = *((BlockInfo *)buffer.data() + i);
-    if (block == 0) {
-      *((BlockInfo *)buffer.data() + i) = res_block_info;
-      break;
+    std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
+    auto buffer = std::vector<u8>();
+    buffer = operation_->read_file(id).unwrap();
+    u32 i;
+    for (i = 0; i < buffer.size() / (sizeof(BlockInfo) / sizeof(u8)); ++i) {
+      auto [block, mac, version] = *((BlockInfo *)buffer.data() + i);
+      if (block == 0 && mac == 0 && version == 0) {
+        *((BlockInfo *)buffer.data() + i) = res_block_info;
+        break;
+      }
     }
-  }
-  {
-    meta_mtx_.lock();
+    if (i == buffer.size() / (sizeof(BlockInfo) / sizeof(u8))) {
+      auto res_buffer = std::vector<u8>(sizeof(BlockInfo));
+      *((BlockInfo *)res_buffer.data()) = res_block_info;
+      buffer.insert(buffer.end(), res_buffer.begin(), res_buffer.end());
+    }
     operation_->write_file(id, buffer);
-    meta_mtx_.unlock();
+    return res_block_info;
   }
-  return res_block_info;
 }
 
 // {Your code here}
@@ -192,37 +190,28 @@ auto MetadataServer::free_block(inode_id_t id, block_id_t block_id, mac_id_t mac
     }
     server_mtx_[machine_id - 1].unlock();
   }
-  auto buffer = std::vector<u8>();
   {
-    meta_mtx_.lock_shared();
-    operation_->read_file(id).unwrap();
-    meta_mtx_.unlock_shared();
-  }
-
-  for (u32 i = 0; i < buffer.size() / (sizeof(BlockInfo) / sizeof(u8)); ++i) {
-    auto [block, mac, version] = *((BlockInfo *)buffer.data() + i);
-    if (block == block_id && mac == machine_id) {
-      *((BlockInfo *)buffer.data() + i) = std::make_tuple(0, 0, 0);
-      break;
+    std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
+    auto buffer = std::vector<u8>();
+    buffer = operation_->read_file(id).unwrap();
+    for (u32 i = 0; i < buffer.size() / sizeof(BlockInfo); ++i) {
+      auto [block, mac, version] = *((BlockInfo *)buffer.data() + i);
+      if (block == block_id && mac == machine_id) {
+        *((BlockInfo *)buffer.data() + i) = std::make_tuple(0, 0, 0);
+        break;
+      }
     }
-  }
-  {
-    meta_mtx_.lock();
     operation_->write_file(id, buffer);
-    meta_mtx_.unlock();
+    return true;
   }
-  return true;
 }
 
 // {Your code here}
 auto MetadataServer::readdir(inode_id_t node) -> std::vector<std::pair<std::string, inode_id_t>> {
+  std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
   std::list<DirectoryEntry> list;
   std::vector<std::pair<std::string, inode_id_t>> result;
-  {
-    meta_mtx_.lock_shared();
-    read_directory(operation_.get(), node, list);
-    meta_mtx_.unlock_shared();
-  }
+  read_directory(operation_.get(), node, list);
   for (const auto &item : list) {
     result.emplace_back(item.name, item.id);
   }
@@ -231,12 +220,9 @@ auto MetadataServer::readdir(inode_id_t node) -> std::vector<std::pair<std::stri
 
 // {Your code here}
 auto MetadataServer::get_type_attr(inode_id_t id) -> std::tuple<u64, u64, u64, u64, u8> {
+  std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
   auto result = std::make_pair<InodeType, FileAttr>({}, {});
-  {
-    meta_mtx_.lock_shared();
-    result = operation_->inode_manager_->get_type_attr(id).unwrap();
-    meta_mtx_.unlock_shared();
-  }
+  result = operation_->inode_manager_->get_type_attr(id).unwrap();
   auto [type, attr] = result;
   return {attr.size, attr.atime, attr.mtime, attr.ctime, static_cast<u64>(type)};
 }

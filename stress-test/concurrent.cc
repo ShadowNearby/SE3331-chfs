@@ -166,6 +166,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
       auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
       for (u64 k = 0; k < test_iterations; ++k) {
         // Allocate 100 blocks
+        std::cout << k << std::endl;
         for (u64 j = 0; j < 100; ++j) {
           auto [block_id, mac_id, version] = meta_srv->allocate_block(file1_id);
           ASSERT_TRUE(block_id > 0);
@@ -206,6 +207,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
       auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
       for (u64 k = 0; k < test_iterations; ++k) {
         // Allocate 100 blocks
+        std::cout << k << std::endl;
         for (u64 j = 0; j < 100; ++j) {
           auto [block_id, mac_id, version] = meta_srv->allocate_block(file2_id);
           ASSERT_TRUE(block_id > 0);

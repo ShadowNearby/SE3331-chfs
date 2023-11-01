@@ -16,12 +16,15 @@ auto DataServer::initialize(std::string const &data_path) {
 
   auto bm = std::make_shared<BlockManager>(data_path, KDefaultBlockCnt);
   if (is_initialized) {
-    block_allocator_ =
-        std::make_shared<BlockAllocator>(bm, 0, false);
+    auto version_blocks_cnt = (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
+    block_allocator_ = std::make_shared<BlockAllocator>(bm, version_blocks_cnt, false);
   } else {
     // We need to reserve some blocks for storing the version of each block
-    block_allocator_ = std::shared_ptr<BlockAllocator>(
-        new BlockAllocator(bm, 0, true));
+    auto version_blocks_cnt = (KDefaultBlockCnt * sizeof(version_t)) / DiskBlockSize;
+    block_allocator_ = std::make_shared<BlockAllocator>(bm, version_blocks_cnt, true);
+    for (block_id_t i = 0; i < version_blocks_cnt; i++) {
+      bm->zero_block(i);
+    }
   }
 
   // Initialize the RPC server and bind all handlers
@@ -79,7 +82,7 @@ auto DataServer::alloc_block() -> std::pair<block_id_t, version_t> {
   auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
   auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
   block_allocator_->bm->read_block(block_index, buffer.data());
-  auto value_ptr = (version_t *)(buffer.data() + version_index * (sizeof(version_t) / sizeof(u8)));
+  auto value_ptr = (version_t *)buffer.data() + version_index;
   auto value = *value_ptr;
   *value_ptr = value + 1;
   block_allocator_->bm->write_block(block_index, buffer.data());
@@ -96,7 +99,7 @@ auto DataServer::free_block(block_id_t block_id) -> bool {
   auto block_index = block_id / (DiskBlockSize / sizeof(version_t));
   auto version_index = block_id % (DiskBlockSize / sizeof(version_t));
   block_allocator_->bm->read_block(block_index, buffer.data());
-  auto value_ptr = (version_t *)(buffer.data() + version_index * (sizeof(version_t) / sizeof(u8)));
+  auto value_ptr = (version_t *)buffer.data() + version_index;
   auto value = *value_ptr;
   *value_ptr = value + 1;
   block_allocator_->bm->write_block(block_index, buffer.data());
