@@ -226,12 +226,13 @@ auto InodeManager::free_inode(inode_id_t id) -> ChfsNullResult {
   }
   auto raw_id = LOGIC_2_RAW(id);
   auto buffer = std::vector<uint8_t>(bm->block_size());
-  //  auto inode_per_block = bm->block_size() / sizeof(block_id_t);
-  //  auto inode_table_block = raw_id / inode_per_block;
-  //  auto inode_table_block_index = raw_id % inode_per_block;
-  //  bm->read_block(inode_table_block + 1, buffer.data());
-  //  *(block_id_t *)(buffer.data() + inode_table_block_index * (sizeof(block_id_t) / sizeof(uint8_t))) =
-  //  KInvalidBlockID; bm->write_block(inode_table_block + 1, buffer.data());
+  auto inode_per_block = bm->block_size() / sizeof(block_id_t);
+  auto inode_table_block = raw_id / inode_per_block;
+  auto inode_table_block_index = raw_id % inode_per_block;
+  bm->read_block(inode_table_block + 1, buffer.data());
+  *(block_id_t *)(buffer.data() + inode_table_block_index * (sizeof(block_id_t) / sizeof(uint8_t))) = KInvalidBlockID;
+  bm->write_block(inode_table_block + 1, buffer.data());
+  
   auto bitmap_block_index = raw_id / (KBitsPerByte * bm->block_size());
   auto node_index_in_bitmap = raw_id % (KBitsPerByte * bm->block_size());
   //  LOG_FORMAT_INFO("free inode id {} block idx {} in block idx {}", id, bitmap_block_index, node_index_in_bitmap);
