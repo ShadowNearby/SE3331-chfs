@@ -116,11 +116,6 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_ERROR
 #define LOG_ERROR_ENABLED
 // #pragma message("LOG_ERROR was enabled.")
-#define LOG_ERROR(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_ERROR); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                                \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                         \
-  ::fflush(stdout)
 #define LOG_FORMAT_ERROR(...)                                               \
   OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_ERROR); \
   ::fprintf(LOG_OUTPUT_STREAM, "%s\n", fmt::format(__VA_ARGS__).c_str());   \
@@ -135,11 +130,6 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_WARN
 #define LOG_WARN_ENABLED
 // #pragma message("LOG_WARN was enabled.")
-#define LOG_WARN(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                               \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                        \
-  ::fflush(stdout)
 #define LOG_FORMAT_WARN(...)                                               \
   OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN); \
   ::fprintf(LOG_OUTPUT_STREAM, "%s\n", fmt::format(__VA_ARGS__).c_str());  \
@@ -154,11 +144,6 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_INFO
 #define LOG_INFO_ENABLED
 // #pragma message("LOG_INFO was enabled.")
-#define LOG_INFO(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                               \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                        \
-  ::fflush(stdout)
 #define LOG_FORMAT_INFO(...)                                               \
   OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO); \
   ::fprintf(LOG_OUTPUT_STREAM, "%s\n", fmt::format(__VA_ARGS__).c_str());  \
@@ -173,11 +158,6 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_DEBUG
 #define LOG_DEBUG_ENABLED
 // #pragma message("LOG_DEBUG was enabled.")
-#define LOG_DEBUG(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_DEBUG); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                                \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                         \
-  ::fflush(stdout)
 #define LOG_FORMAT_DEBUG(...)                                               \
   OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_DEBUG); \
   ::fprintf(LOG_OUTPUT_STREAM, "%s\n", fmt::format(__VA_ARGS__).c_str());   \
@@ -192,17 +172,11 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
 #define LOG_TRACE_ENABLED
 // #pragma message("LOG_TRACE was enabled.")
-#define LOG_TRACE(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_TRACE); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                                \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                         \
-  ::fflush(stdout)
 #define LOG_FORMAT_TRACE(...)                                               \
   OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_TRACE); \
   ::fprintf(LOG_OUTPUT_STREAM, "%s\n", fmt::format(__VA_ARGS__).c_str());   \
   ::fflush(stdout)
 #else
-#define LOG_TRACE(...) ((void)0)
 #endif
 
 // Output log message header in this format: [type] [file:line:function] time -

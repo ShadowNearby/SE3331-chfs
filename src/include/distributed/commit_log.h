@@ -13,11 +13,13 @@
 #include <atomic>
 #include <fstream>
 #include <iostream>
+#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <unordered_set>
 #include <vector>
+#include "block/allocator.h"
 #include "block/manager.h"
 #include "common/config.h"
 #include "common/macros.h"
@@ -60,6 +62,11 @@ class CommitLog {
   /**
    * {Append anything if you need}
    */
+  std::map<txn_id_t, std::list<std::pair<block_id_t, block_id_t>>> txn_;
+  std::map<txn_id_t, bool> txn_finish_;
+  inline static bool txn_fail_{false};
+  inline static txn_id_t curr_txn_id_{};
+  inline static std::vector<std::shared_ptr<BlockOperation>> ops_{};
 };
 
 }  // namespace chfs

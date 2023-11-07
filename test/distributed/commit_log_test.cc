@@ -1,6 +1,7 @@
 #include "distributed/commit_log.h"
 #include <chrono>
 #include <thread>
+#include "common/logger.h"
 #include "distributed/metadata_server.h"
 #include "gtest/gtest.h"
 
@@ -129,6 +130,7 @@ TEST_F(CommitLogTest, CheckRecoverFromFailure) {
 }
 
 TEST_F(CommitLogTest, CheckCheckpointFunctional) {
+  std::remove(inode_path.c_str());
   auto meta_srv = std::make_shared<MetadataServer>(meta_port, inode_path, true, true);
 
   for (int i = 0; i < 100; i++) {

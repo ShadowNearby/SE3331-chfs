@@ -101,6 +101,16 @@ MetadataServer::MetadataServer(std::string const &address, u16 port, const std::
 auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name) -> inode_id_t {
   std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
   auto res = operation_->mk_helper(parent, name.c_str(), InodeType(type));
+  if (commit_log != nullptr) {
+    commit_log->append_log(CommitLog::curr_txn_id_, CommitLog::ops_);
+    commit_log->commit_log(CommitLog::curr_txn_id_);
+    commit_log->checkpoint();
+    CommitLog::curr_txn_id_++;
+    if (CommitLog::txn_fail_) {
+      CommitLog::txn_fail_ = false;
+      return KInvalidInodeID;
+    }
+  }
   if (res.is_err()) {
     return KInvalidInodeID;
   }
@@ -111,6 +121,17 @@ auto MetadataServer::mknode(u8 type, inode_id_t parent, const std::string &name)
 auto MetadataServer::unlink(inode_id_t parent, const std::string &name) -> bool {
   std::scoped_lock<std::shared_mutex> lock(meta_mtx_);
   auto res = operation_->unlink(parent, name.c_str());
+  if (commit_log != nullptr) {
+    commit_log->append_log(CommitLog::curr_txn_id_, CommitLog::ops_);
+    commit_log->commit_log(CommitLog::curr_txn_id_);
+    commit_log->checkpoint();
+    CommitLog::curr_txn_id_++;
+    if (CommitLog::txn_fail_) {
+      CommitLog::txn_fail_ = false;
+      return KInvalidInodeID;
+    }
+  }
+
   if (res.is_ok()) {
     return true;
   }
