@@ -155,7 +155,12 @@ auto MetadataServer::get_block_map(inode_id_t id) -> std::vector<BlockInfo> {
   auto buffer = std::vector<u8>();
   {
     meta_mtx_.lock_shared();
-    buffer = operation_->read_file(id).unwrap();
+    auto call_buffer = operation_->read_file(id);
+    if (call_buffer.is_err()) {
+      meta_mtx_.unlock_shared();
+      return {};
+    }
+    buffer = call_buffer.unwrap();
     meta_mtx_.unlock_shared();
   }
   std::vector<BlockInfo> result{};

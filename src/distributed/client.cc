@@ -1,5 +1,6 @@
 #include "distributed/client.h"
 #include <algorithm>
+#include "common/logger.h"
 #include "common/macros.h"
 #include "common/util.h"
 #include "distributed/metadata_server.h"
@@ -53,13 +54,15 @@ auto ChfsClient::unlink(inode_id_t parent, std::string const &name) -> ChfsNullR
 // {Your code here}
 auto ChfsClient::lookup(inode_id_t parent, const std::string &name) -> ChfsResult<inode_id_t> {
   auto call_res = metadata_server_->call("lookup", parent, name);
+  //  LOG_FORMAT_INFO("parent {} name {}", parent, name);
   if (call_res.is_err()) {
     return ChfsResult<inode_id_t>{call_res.unwrap_error()};
   }
   auto res = call_res.unwrap()->as<inode_id_t>();
-  if (res == 0) {
-    return ChfsResult<inode_id_t>{ErrorType::INVALID};
-  }
+  //  LOG_FORMAT_INFO("lookup result {}", res);
+  //  if (res == 0) {
+  //    return ChfsResult<inode_id_t>{ErrorType::INVALID};
+  //  }
   return ChfsResult<inode_id_t>{res};
 }
 
@@ -80,8 +83,19 @@ auto ChfsClient::get_type_attr(inode_id_t id) -> ChfsResult<std::pair<InodeType,
     return ChfsResult<std::pair<InodeType, FileAttr>>{call_res.unwrap_error()};
   }
   auto res = call_res.unwrap()->as<std::tuple<u64, u64, u64, u64, u8>>();
-  return ChfsResult<std::pair<InodeType, FileAttr>>{std::make_pair(
-      (InodeType)std::get<4>(res), FileAttr{std::get<0>(res), std::get<1>(res), std::get<2>(res), std::get<3>(res)})};
+  auto inode_type = (InodeType)std::get<4>(res);
+  auto file_size = std::get<0>(res);
+  if (inode_type == InodeType::FILE) {
+    auto block_result = metadata_server_->call("get_block_map", id);
+    if (block_result.is_err()) {
+      return {block_result.unwrap_error()};
+    }
+    auto block_maps = block_result.unwrap()->as<std::vector<BlockInfo>>();
+    file_size = block_maps.size() * DiskBlockSize;
+  }
+  LOG_FORMAT_INFO("file size {} type {}", file_size, (u8)inode_type);
+  return ChfsResult<std::pair<InodeType, FileAttr>>{
+      std::make_pair(inode_type, FileAttr{std::get<1>(res), std::get<2>(res), std::get<3>(res), file_size})};
 }
 
 /**
@@ -130,6 +144,7 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data) -
     return ChfsNullResult{block_map_call.unwrap_error()};
   }
   auto block_maps = block_map_call.unwrap()->as<std::vector<BlockInfo>>();
+  LOG_FORMAT_INFO("block map size {}", block_maps.size());
   auto write_loop = [&](block_id_t block_id, mac_id_t mac_id) {
     if (DiskBlockSize - offset > data.size()) {
       auto data_call = data_servers_[mac_id]->call("write_data", block_id, offset, data);
@@ -169,6 +184,7 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data) -
     if (alloc_call.is_err()) {
       return ChfsNullResult{alloc_call.unwrap_error()};
     }
+    LOG_FORMAT_INFO("offset {} data size {}", offset, data.size());
     if (offset > DiskBlockSize) {
       offset -= DiskBlockSize;
       continue;
