@@ -2,14 +2,13 @@
 
 #include <thread>
 
-namespace chfs{
+namespace chfs {
 
-class RaftTestDebug: public RaftTest {};
+class RaftTestDebug : public RaftTest {};
 
-class RaftTestPart1: public RaftTest {};
+class RaftTestPart1 : public RaftTest {};
 
-TEST_F(RaftTestPart1, LeaderElection)
-{
+TEST_F(RaftTestPart1, LeaderElection) {
   InitNodes(3);
 
   mssleep(300);
@@ -25,8 +24,7 @@ TEST_F(RaftTestPart1, LeaderElection)
   EXPECT_GE(CheckOneLeader(), 0);
 }
 
-TEST_F(RaftTestPart1, ReElection)
-{
+TEST_F(RaftTestPart1, ReElection) {
   InitNodes(5);
 
   /* 1. check one leader */
@@ -60,10 +58,9 @@ TEST_F(RaftTestPart1, ReElection)
   CheckOneLeader();
 }
 
-class RaftTestPart2: public RaftTest {};
+class RaftTestPart2 : public RaftTest {};
 
-TEST_F(RaftTestPart2, BasicAgree)
-{
+TEST_F(RaftTestPart2, BasicAgree) {
   int node_num = 3;
 
   InitNodes(node_num);
@@ -77,15 +74,14 @@ TEST_F(RaftTestPart2, BasicAgree)
   }
 }
 
-TEST_F(RaftTestPart2, FailAgreement)
-{
+TEST_F(RaftTestPart2, FailAgreement) {
   int node_num = 3;
 
   InitNodes(node_num);
   mssleep(300);
 
   ASSERT_GE(AppendNewCommand(101, node_num), 0);
-  
+
   int leader = CheckOneLeader();
   DisableNode(leader);
 
@@ -100,8 +96,7 @@ TEST_F(RaftTestPart2, FailAgreement)
   ASSERT_GE(AppendNewCommand(107, node_num), 0);
 }
 
-TEST_F(RaftTestPart2, FailNoAgreement)
-{
+TEST_F(RaftTestPart2, FailNoAgreement) {
   int node_num = 5;
 
   InitNodes(node_num);
@@ -116,7 +111,7 @@ TEST_F(RaftTestPart2, FailNoAgreement)
   DisableNode((leader + 3) % node_num);
 
   mssleep(500);
-  
+
   bool is_leader;
   int temp_term, temp_index;
 
@@ -149,8 +144,7 @@ TEST_F(RaftTestPart2, FailNoAgreement)
   ASSERT_GE(AppendNewCommand(1000, node_num), 0);
 }
 
-TEST_F(RaftTestPart2, ConcurrentStarts)
-{
+TEST_F(RaftTestPart2, ConcurrentStarts) {
   int node_num = 3;
 
   InitNodes(3);
@@ -171,9 +165,8 @@ TEST_F(RaftTestPart2, ConcurrentStarts)
     ListCommand cmd1(1);
     auto res1 = clients[leader]->call(RAFT_RPC_NEW_COMMEND, cmd1.serialize(cmd1.size()), cmd1.size());
     std::tie(is_leader, term, index) = res1.unwrap()->as<std::tuple<bool, int, int>>();
-    if (!is_leader) 
-      continue;
-    
+    if (!is_leader) continue;
+
     int iters = 5;
     std::mutex mtx;
     std::vector<int> indices;
@@ -183,25 +176,23 @@ TEST_F(RaftTestPart2, ConcurrentStarts)
 
     for (int i = 0; i < iters; i++) {
       threads.push_back(std::make_unique<std::thread>(
-        [&] (int j) {
-          ListCommand temp_cmd(100 + j);
+          [&](int j) {
+            ListCommand temp_cmd(100 + j);
 
-          bool temp_is_leader;
-          int temp_term, temp_index;
-          auto temp_res = clients[leader]->call(RAFT_RPC_NEW_COMMEND, temp_cmd.serialize(temp_cmd.size()), temp_cmd.size());
-          std::tie(temp_is_leader, temp_term, temp_index) = temp_res.unwrap()->as<std::tuple<bool, int, int>>();
+            bool temp_is_leader;
+            int temp_term, temp_index;
+            auto temp_res =
+                clients[leader]->call(RAFT_RPC_NEW_COMMEND, temp_cmd.serialize(temp_cmd.size()), temp_cmd.size());
+            std::tie(temp_is_leader, temp_term, temp_index) = temp_res.unwrap()->as<std::tuple<bool, int, int>>();
 
-          if (!temp_is_leader)
-            return;
-          if (term != temp_term)
-            return;
-          
-          mtx.lock();
-          indices.push_back(temp_index);
-          mtx.unlock();
-        }, 
-        i
-      ));
+            if (!temp_is_leader) return;
+            if (term != temp_term) return;
+
+            mtx.lock();
+            indices.push_back(temp_index);
+            mtx.unlock();
+          },
+          i));
     }
 
     for (int i = 0; i < iters; i++) {
@@ -210,11 +201,10 @@ TEST_F(RaftTestPart2, ConcurrentStarts)
 
     for (int i = 0; i < node_num; i++) {
       auto temp_res = clients[i]->call(RAFT_RPC_CHECK_LEADER);
-      if (std::get<1>(temp_res.unwrap()->as<std::tuple<bool, int>>()) != term)
-        goto loop_end;
+      if (std::get<1>(temp_res.unwrap()->as<std::tuple<bool, int>>()) != term) goto loop_end;
     }
 
-    for (auto index: indices) {
+    for (auto index : indices) {
       int res = WaitCommit(index, node_num, term);
       if (res == -1) {
         failed = true;
@@ -223,15 +213,13 @@ TEST_F(RaftTestPart2, ConcurrentStarts)
       values.push_back(res);
     }
 
-    if (failed)
-      continue;
+    if (failed) continue;
 
     for (int i = 0; i < iters; i++) {
       int ans = i + 100;
       bool find = false;
       for (auto value : values) {
-        if (value == ans)
-          find = true;
+        if (value == ans) find = true;
       }
       EXPECT_TRUE(find) << "cmd " << ans << " missing";
     }
@@ -246,13 +234,12 @@ TEST_F(RaftTestPart2, ConcurrentStarts)
   EXPECT_TRUE(success) << "term change too often";
 }
 
-TEST_F(RaftTestPart2, Rejoin)
-{
+TEST_F(RaftTestPart2, Rejoin) {
   int node_num = 3;
   InitNodes(3);
 
   ASSERT_GE(AppendNewCommand(101, node_num), 0);
-  
+
   int leader1 = CheckOneLeader();
   ASSERT_GE(leader1, 0);
 
@@ -264,7 +251,7 @@ TEST_F(RaftTestPart2, Rejoin)
   ListCommand cmd3(104);
   clients[leader1]->call(RAFT_RPC_NEW_COMMEND, cmd1.serialize(cmd1.size()), cmd1.size());
   clients[leader1]->call(RAFT_RPC_NEW_COMMEND, cmd2.serialize(cmd2.size()), cmd2.size());
-  clients[leader1]->call(RAFT_RPC_NEW_COMMEND, cmd3.serialize(cmd3.size()), cmd3.size()); 
+  clients[leader1]->call(RAFT_RPC_NEW_COMMEND, cmd3.serialize(cmd3.size()), cmd3.size());
 
   int leader2 = CheckOneLeader();
   ASSERT_GE(leader2, 0);
@@ -281,8 +268,7 @@ TEST_F(RaftTestPart2, Rejoin)
   ASSERT_GE(AppendNewCommand(105, node_num), 0);
 }
 
-TEST_F(RaftTestPart2, Backup)
-{
+TEST_F(RaftTestPart2, Backup) {
   int node_num = 5;
   InitNodes(5);
 
@@ -310,8 +296,7 @@ TEST_F(RaftTestPart2, Backup)
   /* allow other partition to recover */
   EnableNode((leader1 + 2) % node_num);
   EnableNode((leader1 + 3) % node_num);
-  EnableNode((leader1 + 4) % node_num); 
-
+  EnableNode((leader1 + 4) % node_num);
 
   /* lots of successful commands to new group. */
   for (int i = 0; i < 50; i++) {
@@ -358,8 +343,7 @@ TEST_F(RaftTestPart2, Backup)
 }
 
 /* RPC counts aren't too high */
-TEST_F(RaftTestPart2, RpcCount)
-{
+TEST_F(RaftTestPart2, RpcCount) {
   const auto processor_count = std::thread::hardware_concurrency();
 
   int node_num = 3;
@@ -377,9 +361,8 @@ TEST_F(RaftTestPart2, RpcCount)
   bool failed;
   for (int tries = 0; tries < 5; tries++) {
     int value = 1;
-    if (tries > 0)
-      mssleep(3000);
-    
+    if (tries > 0) mssleep(3000);
+
     leader = CheckOneLeader();
     ASSERT_GE(leader, 0);
     total1 = RpcCount(-1);
@@ -389,34 +372,28 @@ TEST_F(RaftTestPart2, RpcCount)
     ListCommand cmd1(1024);
     auto res1 = clients[leader]->call(RAFT_RPC_NEW_COMMEND, cmd1.serialize(cmd1.size()), cmd1.size());
     std::tie(is_leader, term, index) = res1.unwrap()->as<std::tuple<bool, int, int>>();
-    if (!is_leader)
-      continue;
+    if (!is_leader) continue;
 
     int iters = 10;
     int rpc_limit = iters * 10;
     if (processor_count && processor_count < 4) {
       rpc_limit = iters * (24 / processor_count + 15);
     }
-    for (int i = 1; i < iters + 2; i++)
-    {
+    for (int i = 1; i < iters + 2; i++) {
       int term1, index1;
       ListCommand cmd(value);
       auto res2 = clients[leader]->call(RAFT_RPC_NEW_COMMEND, cmd.serialize(cmd.size()), cmd.size());
       std::tie(is_leader, term1, index1) = res2.unwrap()->as<std::tuple<bool, int, int>>();
-      if (!is_leader)
-        goto loop_end;
-      if (term1 != term)
-        goto loop_end;
+      if (!is_leader) goto loop_end;
+      if (term1 != term) goto loop_end;
       value++;
       ASSERT_EQ(index + i, index1) << "wrong commit index " << index1 << ", expected " << index + i;
     }
 
     for (int i = 1; i < iters + 1; i++) {
       int res = WaitCommit(index + i, node_num, term);
-      if (res == -1)
-        goto loop_end;
-      ASSERT_TRUE(res == i) << "wrong value " << res << " committed for index "
-                            << index + i << "; expected " << i;
+      if (res == -1) goto loop_end;
+      ASSERT_TRUE(res == i) << "wrong value " << res << " committed for index " << index + i << "; expected " << i;
     }
 
     failed = false;
@@ -424,17 +401,15 @@ TEST_F(RaftTestPart2, RpcCount)
       auto res3 = clients[j]->call(RAFT_RPC_CHECK_LEADER);
 
       int temp_term = std::get<1>(res3.unwrap()->as<std::tuple<bool, int>>());
-      if (temp_term != term)
-      {
+      if (temp_term != term) {
         failed = true;
       }
     }
-    if (failed)
-      goto loop_end;
+    if (failed) goto loop_end;
 
     total2 = RpcCount(-1);
-    EXPECT_TRUE(total2 - total1 <= rpc_limit) << "too many RPCs (" << total2 - total1 << ") for " << iters
-                                                        << " entries" << ", limit is " << rpc_limit;
+    EXPECT_TRUE(total2 - total1 <= rpc_limit) << "too many RPCs (" << total2 - total1 << ") for " << iters << " entries"
+                                              << ", limit is " << rpc_limit;
     success = true;
     break;
   loop_end:
@@ -450,19 +425,15 @@ TEST_F(RaftTestPart2, RpcCount)
   EXPECT_TRUE(total3 - total2 <= 50) << "too many RPCs (" << total3 - total2 << ") for 1 second of idleness";
 }
 
-class RaftTestPart3: public RaftTest 
-{
-public:
-  void Figure8Test(int num_tries = 1000)
-  {
+class RaftTestPart3 : public RaftTest {
+ public:
+  void Figure8Test(int num_tries = 1000) {
     int num_nodes = 5;
     ASSERT_GE(AppendNewCommand(2048, 1), 0);
     int nup = num_nodes;
-    for (int iters = 0; iters < num_tries; iters++)
-    {
+    for (int iters = 0; iters < num_tries; iters++) {
       int leader = -1;
       for (int i = 0; i < num_nodes; i++) {
-
         ListCommand cmd(iters);
         auto res = clients[i]->call(RAFT_RPC_NEW_COMMEND, cmd.serialize(cmd.size()), cmd.size());
         bool is_leader = std::get<0>(res.unwrap()->as<std::tuple<bool, int, int>>());
@@ -481,19 +452,16 @@ public:
         DisableNode(leader);
         nup--;
       }
-      if (nup < 3)
-      {
+      if (nup < 3) {
         int s = rand() % num_nodes;
-        if (!node_network_available[s])
-        {
+        if (!node_network_available[s]) {
           Restart(s);
           nup++;
         }
       }
     }
 
-    for (int i = 0; i < num_nodes; i++)
-    {
+    for (int i = 0; i < num_nodes; i++) {
       Restart(i);
     }
 
@@ -501,8 +469,7 @@ public:
   }
 };
 
-TEST_F(RaftTestPart3, BasicPersist)
-{
+TEST_F(RaftTestPart3, BasicPersist) {
   int num_nodes = 3;
   InitNodes(num_nodes);
   mssleep(100);
@@ -534,7 +501,7 @@ TEST_F(RaftTestPart3, BasicPersist)
   ASSERT_GE(AppendNewCommand(14, num_nodes - 1), 0);
   Restart(leader2);
 
-  ASSERT_GE(WaitCommit(4, num_nodes, -1), 0); // wait for leader2 to join before killing i3
+  ASSERT_GE(WaitCommit(4, num_nodes, -1), 0);  // wait for leader2 to join before killing i3
 
   int i3 = (CheckOneLeader() + 1) % num_nodes;
   DisableNode(i3);
@@ -544,8 +511,7 @@ TEST_F(RaftTestPart3, BasicPersist)
   ASSERT_GE(AppendNewCommand(16, num_nodes), 0);
 }
 
-TEST_F(RaftTestPart3, MorePersistence)
-{
+TEST_F(RaftTestPart3, MorePersistence) {
   int num_nodes = 5;
   InitNodes(num_nodes);
 
@@ -584,8 +550,7 @@ TEST_F(RaftTestPart3, MorePersistence)
   ASSERT_GE(WaitCommit(index, num_nodes, -1), 0);
 }
 
-TEST_F(RaftTestPart3, Persist3)
-{
+TEST_F(RaftTestPart3, Persist3) {
   int num_nodes = 3;
   InitNodes(num_nodes);
 
@@ -613,43 +578,37 @@ TEST_F(RaftTestPart3, Persist3)
 }
 
 /* Agreement under unreliable network */
-TEST_F(RaftTestPart3, UnreliableAgree)
-{
+TEST_F(RaftTestPart3, UnreliableAgree) {
   int num_nodes = 5;
   InitNodes(num_nodes);
 
   SetReliable(false);
 
   std::vector<std::unique_ptr<std::thread>> worker_theards;
-  for (int iters = 1; iters < 50; iters++)
-  {
-    for (int j = 0; j < 4; j++)
-    {
+  for (int iters = 1; iters < 50; iters++) {
+    for (int j = 0; j < 4; j++) {
       worker_theards.push_back(
-        std::make_unique<std::thread>(std::bind(&RaftTestPart3::AppendNewCommand, this, 100 * iters + j, 1))
-      );
+          std::make_unique<std::thread>(std::bind(&RaftTestPart3::AppendNewCommand, this, 100 * iters + j, 1)));
     }
 
     ASSERT_GE(AppendNewCommand(iters, 1), 0);
   }
-  
-  for (auto &&worker: worker_theards) {
+
+  for (auto &&worker : worker_theards) {
     worker->join();
   }
 
   ASSERT_GE(AppendNewCommand(4096, num_nodes), 0);
 }
 
-TEST_F(RaftTestPart3, Figure8)
-{
+TEST_F(RaftTestPart3, Figure8) {
   int num_nodes = 5;
   InitNodes(num_nodes);
 
   Figure8Test();
 }
 
-TEST_F(RaftTestPart3, UnreliableFigure8)
-{
+TEST_F(RaftTestPart3, UnreliableFigure8) {
   int num_nodes = 5;
   InitNodes(num_nodes);
 
@@ -658,21 +617,19 @@ TEST_F(RaftTestPart3, UnreliableFigure8)
   Figure8Test(100);
 }
 
-class RaftTestPart4: public RaftTest {};
+class RaftTestPart4 : public RaftTest {};
 
-TEST_F(RaftTestPart4, BasicSnapshot)
-{
+TEST_F(RaftTestPart4, BasicSnapshot) {
   int num_nodes = 3;
   InitNodes(num_nodes);
-  
+
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   int killed_node = (leader + 1) % num_nodes;
   DisableNode(killed_node);
 
-  for (int i = 1; i < 100; i++)
-    ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
-  
+  for (int i = 1; i < 100; i++) ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
+
   auto res0 = clients[leader]->call(RAFT_RPC_GET_SNAPSHOT);
   std::vector<u8> snapshot0 = res0.unwrap()->as<std::vector<u8>>();
 
@@ -687,8 +644,7 @@ TEST_F(RaftTestPart4, BasicSnapshot)
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   int other_node = (leader + 1) % num_nodes;
-  if (other_node == killed_node)
-    other_node = (leader + 2) % num_nodes;
+  if (other_node == killed_node) other_node = (leader + 2) % num_nodes;
 
   auto res1 = clients[leader]->call(RAFT_RPC_SAVE_SNAPSHOT);
   ASSERT_TRUE(res1.unwrap()->as<bool>()) << "leader cannot save snapshot";
@@ -704,17 +660,15 @@ TEST_F(RaftTestPart4, BasicSnapshot)
   ASSERT_TRUE(nodes[killed_node]->get_list_state_log_num() < 90) << "the snapshot does not work";
 }
 
-TEST_F(RaftTestPart4, RestoreSnapshot)
-{
+TEST_F(RaftTestPart4, RestoreSnapshot) {
   int num_nodes = 3;
   InitNodes(num_nodes);
 
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
-  
-  for (int i = 1; i < 100; i++)
-    ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
-  
+
+  for (int i = 1; i < 100; i++) ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
+
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
   auto res1 = clients[leader]->call(RAFT_RPC_SAVE_SNAPSHOT);
@@ -725,31 +679,28 @@ TEST_F(RaftTestPart4, RestoreSnapshot)
   ASSERT_TRUE(nodes[leader]->get_list_state_log_num() < 90) << "the snapshot does not work";
 }
 
-TEST_F(RaftTestPart4, OverrideSnapshot)
-{
+TEST_F(RaftTestPart4, OverrideSnapshot) {
   int num_nodes = 3;
   InitNodes(num_nodes);
 
   int leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
 
-  for (int i = 1; i < 30; i++)
-    ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
+  for (int i = 1; i < 30; i++) ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
 
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
 
   auto res1 = clients[leader]->call(RAFT_RPC_SAVE_SNAPSHOT);
   ASSERT_TRUE(res1.unwrap()->as<bool>()) << "leader cannot save snapshot";
- 
-  for (int i = 30; i < 60; i++)
-    ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
-  
+
+  for (int i = 30; i < 60; i++) ASSERT_GE(AppendNewCommand(100 + i, num_nodes - 1), 0);
+
   leader = CheckOneLeader();
   ASSERT_GE(leader, 0);
 
   auto res2 = clients[leader]->call(RAFT_RPC_SAVE_SNAPSHOT);
-  ASSERT_TRUE(res2.unwrap()->as<bool>()) <<  "leader cannot save snapshot";
+  ASSERT_TRUE(res2.unwrap()->as<bool>()) << "leader cannot save snapshot";
   mssleep(2000);
   Restart(leader);
   ASSERT_GE(AppendNewCommand(1024, num_nodes), 0);

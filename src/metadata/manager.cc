@@ -232,7 +232,7 @@ auto InodeManager::free_inode(inode_id_t id) -> ChfsNullResult {
   bm->read_block(inode_table_block + 1, buffer.data());
   *(block_id_t *)(buffer.data() + inode_table_block_index * (sizeof(block_id_t) / sizeof(uint8_t))) = KInvalidBlockID;
   bm->write_block(inode_table_block + 1, buffer.data());
-  
+
   auto bitmap_block_index = raw_id / (KBitsPerByte * bm->block_size());
   auto node_index_in_bitmap = raw_id % (KBitsPerByte * bm->block_size());
   //  LOG_FORMAT_INFO("free inode id {} block idx {} in block idx {}", id, bitmap_block_index, node_index_in_bitmap);
