@@ -85,7 +85,9 @@ struct AppendEntriesReply {
   /* Lab3: Your code here */
   int term;
   bool success;
-  MSGPACK_DEFINE(term, success)
+  int conflict_index;
+  int conflict_term;
+  MSGPACK_DEFINE(term, success, conflict_index, conflict_term)
 };
 
 struct InstallSnapshotArgs {

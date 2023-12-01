@@ -337,13 +337,13 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   auto arg = transform_rpc_append_entries_args<Command>(rpc_arg);
   if (arg.term < current_term) {
     RAFT_LOG("append error arg.term:%d current_term:%d", arg.term, current_term);
-    return {current_term, false};
+    return {current_term, false, 0, 0};
   }
   become_follower(arg.term, arg.leader_id);
   RAFT_LOG("receive heartbeat from %d", arg.leader_id);
   if (arg.prev_log_index != 0 && !(arg.prev_log_index <= log_storage->Size() - 1 &&
                                    log_storage->At(arg.prev_log_index).term == arg.prev_log_term)) {
-    return {current_term, false};
+    return {current_term, false, 0, 0};
   }
   for (int i = 0; i < arg.entries.size() && i + arg.prev_log_index < log_storage->Size(); ++i) {
     if (arg.entries.at(i).term != log_storage->At(arg.prev_log_index + i).term) {
@@ -354,7 +354,7 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
       if (arg.leader_commit > commit_index) {
         commit_index = std::min({arg.leader_commit, (int)log_storage->Size()});
       }
-      return {current_term, true};
+      return {current_term, true, 0, 0};
     }
   }
   if (arg.prev_log_index + arg.entries.size() > log_storage->Size()) {
@@ -366,7 +366,7 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
     commit_index = std::min(
         {arg.leader_commit, std::max({arg.prev_log_index + (int)arg.entries.size(), (int)log_storage->Size()})});
   }
-  return {current_term, true};
+  return {current_term, true, 0, 0};
 }
 
 template <typename StateMachine, typename Command>
@@ -475,18 +475,20 @@ void RaftNode<StateMachine, Command>::run_background_election() {
         if (role == RaftRole::Leader) {
           continue;
         }
-        if (role == RaftRole::Follower) {
-          if (receive_heartbeat) {
-            receive_heartbeat = false;
-            continue;
-          }
-          become_candidate();
+        if (receive_heartbeat) {
+          receive_heartbeat = false;
+          continue;
         }
+        become_candidate();
+        //        if (role == RaftRole::Follower) {
+        //
+        //        }
       }
       for (const auto &node_id : peer) {
-        thread_pool->enqueue([node_id, this]() {
-          send_request_vote(node_id, {current_term, my_id, log_storage->Size() - 1, log_storage->Back().term});
-        });
+        if (!rpc_clients_map[my_id]) {
+          break;
+        }
+        send_request_vote(node_id, {current_term, my_id, log_storage->Size() - 1, log_storage->Back().term});
       }
     }
   }
@@ -545,6 +547,10 @@ void RaftNode<StateMachine, Command>::run_background_ping() {
       }
       for (const auto &node_id : peer) {
         auto next = next_index[node_id];
+        if (!rpc_clients_map[my_id]) {
+          break;
+        }
+        RAFT_LOG("send heartbeat to %d", node_id);
         send_append_entries(node_id, {current_term, my_id, next - 1, log_storage->At(next - 1).term, {}, commit_index});
       }
     }
@@ -659,7 +665,7 @@ void RaftNode<StateMachine, Command>::become_candidate() {
   role = RaftRole::Candidate;
   current_term++;
   vote_for = my_id;
-  granted_vote++;
+  granted_vote = 1;
   RAFT_LOG("become candidate")
 }
 
