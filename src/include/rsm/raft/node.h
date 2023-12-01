@@ -22,6 +22,43 @@
 #include "utils/thread_pool.h"
 namespace chfs {
 
+class Timer {
+ public:
+  Timer(int random, int base) : generator() { interval = rand() % random + base; };
+  void reset() {
+    start_time = std::chrono::steady_clock::now();
+    receive_heartbeat = false;
+  }
+  auto get_interval() const { return std::chrono::milliseconds(interval); }
+  void start() {
+    start_time = std::chrono::steady_clock::now();
+    state = true;
+  }
+  void stop() { state = false; }
+  void receive() { receive_heartbeat = true; }
+  bool check_receive() { return receive_heartbeat.load(); }
+  bool timeout() {
+    if (!state) {
+      return false;
+    }
+    auto curr_time = std::chrono::steady_clock::now();
+    if (const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - start_time).count();
+        duration > interval) {
+      reset();
+
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  int interval;
+  std::chrono::steady_clock::time_point start_time;
+  RandomNumberGenerator generator;
+  std::atomic<bool> receive_heartbeat{false};
+  std::atomic<bool> state{false};
+};
+
 enum class RaftRole { Follower, Candidate, Leader };
 struct RaftNodeConfig {
   int node_id;
@@ -139,16 +176,15 @@ class RaftNode {
   std::atomic<int> granted_vote;
   std::map<int, int> next_index;
   std::map<int, int> match_index;
-  RandomNumberGenerator generator;
-  std::atomic<bool> receive_heartbeat;
+
   std::vector<int> peer;
   std::unique_ptr<ThreadPool> debug_thread_pool;
 
+  Timer vote_timer{400, 500};
   void become_leader();
   void become_follower(int term, int id_leader);
   void become_candidate();
   auto alive_node() -> int;
-  void mssleep(int min, int max, int base);
 };
 
 template <typename StateMachine, typename Command>
@@ -162,9 +198,7 @@ RaftNode<StateMachine, Command>::RaftNode(int node_id, std::vector<RaftNodeConfi
       leader_id(-1),
       commit_index(0),
       vote_for(-1),
-      granted_vote(0),
-      generator(),
-      receive_heartbeat(false) {
+      granted_vote(0) {
   auto my_config = node_configs[my_id];
 
   /* launch RPC server */
@@ -228,7 +262,16 @@ auto RaftNode<StateMachine, Command>::start() -> int {
   /* Lab3: Your code here */
 
   stopped = false;
-  become_follower(current_term, -1);
+  auto cnt = 0;
+  for (const auto &config : this->node_configs) {
+    if (!cnt && config.node_id == my_id) {
+      become_candidate();
+    } else {
+      become_follower(0, -1);
+    }
+    this->rpc_clients_map[config.node_id] = std::make_unique<RpcClient>(config.ip_address, config.port, true);
+    cnt++;
+  }
   background_election = std::make_unique<std::thread>(&RaftNode::run_background_election, this);
   background_ping = std::make_unique<std::thread>(&RaftNode::run_background_ping, this);
   background_commit = std::make_unique<std::thread>(&RaftNode::run_background_commit, this);
@@ -287,13 +330,15 @@ auto RaftNode<StateMachine, Command>::get_snapshot() -> std::vector<u8> {
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::request_vote(RequestVoteArgs args) -> RequestVoteReply {
   /* Lab3: Your code here */
-
+  //  RAFT_LOG("receive request from %d", args.candidate_id)
   auto term = args.term;
   if (term < current_term) {
     return {current_term, false};
   }
   if (term > current_term) {
     become_follower(term, -1);
+    vote_for = args.candidate_id;
+    return {current_term, true};
   }
   auto last_log_index = log_storage->Size() - 1;
   auto last_log_term = log_storage->At(last_log_index).term;
@@ -322,10 +367,9 @@ void RaftNode<StateMachine, Command>::handle_request_vote_reply(int target, cons
   }
   if (reply.vote_granted) {
     granted_vote++;
-    auto alive = alive_node();
-    auto half_node = alive / 2 + 1;
-    RAFT_LOG("grant:%d half:%d all:%d", (int)granted_vote, half_node, alive)
-    if (granted_vote >= half_node && alive >= 3) {
+    auto half_node = (int)node_configs.size() / 2 + 1;
+    RAFT_LOG("grant:%d from%d half:%d ", (int)granted_vote, target, half_node)
+    if (granted_vote >= half_node) {
       become_leader();
     }
   }
@@ -336,11 +380,11 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   /* Lab3: Your code here */
   auto arg = transform_rpc_append_entries_args<Command>(rpc_arg);
   if (arg.term < current_term) {
-    RAFT_LOG("append error arg.term:%d current_term:%d", arg.term, current_term);
+    //    RAFT_LOG("append error arg.term:%d current_term:%d", arg.term, current_term)
     return {current_term, false, 0, 0};
   }
   become_follower(arg.term, arg.leader_id);
-  RAFT_LOG("receive heartbeat from %d", arg.leader_id);
+  //  RAFT_LOG("receive heartbeat from %d", arg.leader_id)
   if (arg.prev_log_index != 0 && !(arg.prev_log_index <= log_storage->Size() - 1 &&
                                    log_storage->At(arg.prev_log_index).term == arg.prev_log_term)) {
     return {current_term, false, 0, 0};
@@ -469,25 +513,31 @@ void RaftNode<StateMachine, Command>::run_background_election() {
         return;
       }
       /* Lab3: Your code here */
-      std::this_thread::sleep_for(std::chrono::milliseconds(generator.rand(0, 200) + 300));
-      {
-        std::scoped_lock<std::mutex> lock(mtx);
-        if (role == RaftRole::Leader) {
-          continue;
-        }
-        if (receive_heartbeat) {
-          receive_heartbeat = false;
-          continue;
-        }
-        become_candidate();
-        //        if (role == RaftRole::Follower) {
-        //
-        //        }
+      std::this_thread::sleep_for(vote_timer.get_interval());
+      //      {
+      //        std::scoped_lock<std::mutex> lock(mtx);
+      if (role == RaftRole::Leader) {
+        continue;
       }
-      for (const auto &node_id : peer) {
-        if (!rpc_clients_map[my_id]) {
-          break;
+      if (!rpc_clients_map[my_id]) {
+        continue;
+      }
+      auto receive = vote_timer.check_receive();
+      auto timeout = vote_timer.timeout();
+      if (role == RaftRole::Follower) {
+        if (timeout && !receive) {
+          become_candidate();
         }
+      }
+      if (!timeout || receive) {
+        continue;
+      }
+      current_term++;
+      vote_for = my_id;
+      granted_vote = 1;
+      //      }
+      for (const auto &node_id : peer) {
+        //        RAFT_LOG("send vote? to %d", node_id)
         send_request_vote(node_id, {current_term, my_id, log_storage->Size() - 1, log_storage->Back().term});
       }
     }
@@ -545,18 +595,66 @@ void RaftNode<StateMachine, Command>::run_background_ping() {
       if (role != RaftRole::Leader) {
         continue;
       }
+      if (!rpc_clients_map[my_id]) {
+        continue;
+      }
       for (const auto &node_id : peer) {
         auto next = next_index[node_id];
-        if (!rpc_clients_map[my_id]) {
-          break;
-        }
-        RAFT_LOG("send heartbeat to %d", node_id);
+        //        RAFT_LOG("send heartbeat to %d", node_id);
         send_append_entries(node_id, {current_term, my_id, next - 1, log_storage->At(next - 1).term, {}, commit_index});
       }
     }
   }
 }
 
+template <typename StateMachine, typename Command>
+void RaftNode<StateMachine, Command>::become_leader() {
+  role = RaftRole::Leader;
+  leader_id = my_id;
+  granted_vote = 0;
+  vote_for = -1;
+  vote_timer.stop();
+  RAFT_LOG("become leader")
+}
+
+template <typename StateMachine, typename Command>
+void RaftNode<StateMachine, Command>::become_follower(int term, int id_leader) {
+  //  RAFT_LOG("become follower")
+  role = RaftRole::Follower;
+  vote_timer.start();
+  current_term = term;
+  leader_id = id_leader;
+  vote_for = -1;
+  granted_vote = 0;
+}
+
+template <typename StateMachine, typename Command>
+void RaftNode<StateMachine, Command>::become_candidate() {
+  role = RaftRole::Candidate;
+  vote_timer.start();
+  vote_for = my_id;
+  granted_vote = 1;
+  //  RAFT_LOG("become candidate")
+}
+
+template <typename StateMachine, typename Command>
+auto RaftNode<StateMachine, Command>::alive_node() -> int {
+  int sum = 0;
+  std::vector<int> alive;
+  std::unique_lock<std::mutex> clients_lock(clients_mtx);
+  for (auto &&client : rpc_clients_map) {
+    if (client.second) {
+      alive.emplace_back(client.first);
+      sum++;
+    }
+  }
+  std::string s;
+  for (const auto &item : alive) {
+    s += " " + std::to_string(item);
+  }
+  RAFT_LOG("sum alive node:%d [%s]", sum, s.c_str())
+  return sum;
+}
 /******************************************************************
 
                           Test Functions (must not edit)
@@ -572,7 +670,7 @@ void RaftNode<StateMachine, Command>::set_network(std::map<int, bool> &network_a
     for (auto &&client : rpc_clients_map) {
       if (client.second != nullptr) client.second.reset();
     }
-
+    //    RAFT_LOG("disable2 %d", my_id)
     return;
   }
 
@@ -590,7 +688,7 @@ void RaftNode<StateMachine, Command>::set_network(std::map<int, bool> &network_a
     }
 
     if (!node_status && rpc_clients_map[node_id] != nullptr) {
-      RAFT_LOG("disable %d", node_id)
+      //      RAFT_LOG("disable %d", node_id)
       rpc_clients_map[node_id].reset();
     }
   }
@@ -637,61 +735,6 @@ std::vector<u8> RaftNode<StateMachine, Command>::get_snapshot_direct() {
   std::unique_lock<std::mutex> lock(mtx);
 
   return state->snapshot();
-}
-
-template <typename StateMachine, typename Command>
-void RaftNode<StateMachine, Command>::become_leader() {
-  role = RaftRole::Leader;
-  leader_id = my_id;
-  RAFT_LOG("become leader")
-}
-
-template <typename StateMachine, typename Command>
-void RaftNode<StateMachine, Command>::become_follower(int term, int id_leader) {
-  //  RAFT_LOG("become follower")
-  if (role != RaftRole::Leader) {
-    receive_heartbeat = true;
-  }
-  role = RaftRole::Follower;
-  current_term = term;
-  leader_id = id_leader;
-  vote_for = -1;
-  granted_vote = 0;
-}
-
-template <typename StateMachine, typename Command>
-void RaftNode<StateMachine, Command>::become_candidate() {
-  receive_heartbeat = true;
-  role = RaftRole::Candidate;
-  current_term++;
-  vote_for = my_id;
-  granted_vote = 1;
-  RAFT_LOG("become candidate")
-}
-
-template <typename StateMachine, typename Command>
-void RaftNode<StateMachine, Command>::mssleep(int min, int max, int base) {
-  auto sleep = (generator.rand(min, max) + base);
-  usleep(1000 * sleep);
-}
-
-template <typename StateMachine, typename Command>
-auto RaftNode<StateMachine, Command>::alive_node() -> int {
-  int sum = 0;
-  std::vector<int> alive;
-  std::unique_lock<std::mutex> clients_lock(clients_mtx);
-  for (auto &&client : rpc_clients_map) {
-    if (client.second) {
-      alive.emplace_back(client.first);
-      sum++;
-    }
-  }
-  std::string s;
-  for (const auto &item : alive) {
-    s += " " + std::to_string(item);
-  }
-  RAFT_LOG("sum alive node:%d [%s]", sum, s.c_str())
-  return sum;
 }
 
 }  // namespace chfs
