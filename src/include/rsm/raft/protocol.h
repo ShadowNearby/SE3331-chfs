@@ -40,54 +40,36 @@ struct AppendEntriesArgs {
   int leader_id;
   int prev_log_index;
   int prev_log_term;
-  std::vector<Entry<Command>> entries;
   int leader_commit;
+  std::vector<Entry<Command>> entries;
 };
 
 struct RpcAppendEntriesArgs {
   /* Lab3: Your code here */
-  int term;
-  int leader_id;
-  int prev_log_index;
-  int prev_log_term;
-  std::vector<uint8_t> entries_data;
-  int leader_commit;
-  MSGPACK_DEFINE(term, leader_id, prev_log_index, prev_log_term, entries_data, leader_commit)
+  std::vector<uint8_t> data;
+  MSGPACK_DEFINE(data)
 };
 
 template <typename Command>
 RpcAppendEntriesArgs transform_append_entries_args(const AppendEntriesArgs<Command> &arg) {
   /* Lab3: Your code here */
-  std::vector<uint8_t> entries_data;
-  const std::vector<Entry<Command>> &entries = arg.entries;
-  entries_data.resize(sizeof(Entry<Command>) * entries.size());
-  for (uint32_t i = 0; i < entries.size(); ++i) {
-    *(Entry<Command> *)(entries_data.data() + i) = entries.at(i);
-  }
-  return RpcAppendEntriesArgs{arg.term,          arg.leader_id, arg.prev_log_index,
-                              arg.prev_log_term, entries_data,  arg.leader_commit};
+  std::vector<u8> buffer(sizeof(arg));
+  *(AppendEntriesArgs<Command> *)buffer.data() = arg;
+  return RpcAppendEntriesArgs{buffer};
 }
 
 template <typename Command>
 AppendEntriesArgs<Command> transform_rpc_append_entries_args(const RpcAppendEntriesArgs &rpc_arg) {
   /* Lab3: Your code here */
-  const std::vector<uint8_t> &entries_data = rpc_arg.entries_data;
-  std::vector<Entry<Command>> entries;
-  uint32_t num = entries_data.size() / sizeof(Entry<Command>);
-  for (uint32_t i = 0; i < num; ++i) {
-    entries.emplace_back(*(Entry<Command> *)(entries_data.data() + i));
-  }
-  return AppendEntriesArgs<Command>{rpc_arg.term,          rpc_arg.leader_id, rpc_arg.prev_log_index,
-                                    rpc_arg.prev_log_term, entries,           rpc_arg.leader_commit};
+  AppendEntriesArgs<Command> args = *(AppendEntriesArgs<Command> *)(rpc_arg.data.data());
+  return args;
 }
 
 struct AppendEntriesReply {
   /* Lab3: Your code here */
   int term;
   bool success;
-  int conflict_index;
-  int conflict_term;
-  MSGPACK_DEFINE(term, success, conflict_index, conflict_term)
+  MSGPACK_DEFINE(term, success)
 };
 
 struct InstallSnapshotArgs {
