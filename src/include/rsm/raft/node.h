@@ -39,7 +39,7 @@ namespace chfs {
 
 class Timer {
  public:
-  Timer(int random, int base) : random(random), base(base) { interval = rand() % random + base; };
+  Timer(int random, int base) : random(random), base(base) { interval = generator.rand(0, random) + base; };
   void reset() {
     interval = rand() % random + base;
     start_time = std::chrono::steady_clock::now();
@@ -71,6 +71,7 @@ class Timer {
   int base;
   int interval;
   std::chrono::steady_clock::time_point start_time;
+  RandomNumberGenerator generator{};
   std::atomic<bool> receive_heartbeat{false};
   std::atomic<bool> state{false};
 };
@@ -366,9 +367,9 @@ auto RaftNode<StateMachine, Command>::request_vote(RequestVoteArgs args) -> Requ
   if (vote_for == args.candidate_id) {
     return {current_term, true};
   }
-  if (args.term == current_term && vote_for != -1) {
-    return {current_term, false};
-  }
+  //  if (args.term == current_term && vote_for != -1) {
+  //    return {current_term, false};
+  //  }
   auto last_log_index = log_storage->Size() - 1;
   auto last_log_term = log_storage->At(last_log_index).term;
   //  if (vote_for != -1) {
