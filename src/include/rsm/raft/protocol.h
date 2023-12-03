@@ -41,6 +41,7 @@ struct AppendEntriesArgs {
   int prev_log_index;
   int prev_log_term;
   int leader_commit;
+  bool heart_beat;
   std::vector<Entry<Command>> entries;
 };
 

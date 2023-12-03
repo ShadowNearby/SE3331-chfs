@@ -18,6 +18,19 @@ struct Entry {
   Command command;
   std::string to_string() const { return fmt::format("term:{} command:{}", term, command.value); }
 };
+template <typename Command>
+
+std::string entries_to_str(std::vector<chfs::Entry<Command>> entries) {
+  std::string entries_str = "[";
+  for (const chfs::Entry<Command> &entry : entries) {
+    entries_str += entry.to_string() + ",";
+  }
+  if (entries_str.size() != 1) {
+    entries_str.pop_back();
+  }
+  entries_str += "]";
+  return entries_str;
+}
 
 template <typename Command>
 class RaftLog {
@@ -56,6 +69,12 @@ class RaftLog {
   }
   auto At(int index) -> Entry<Command> {
     std::scoped_lock<std::mutex> lock(mtx_);
+    if (index >= data_.size()) {
+      for (int i = 0; i < index - data_.size() + 1; ++i) {
+        data_.emplace_back(Entry<Command>{0, 0});
+      }
+      //      LOG_FORMAT_ERROR("error in here {} {}", index, data_.size());
+    }
     return data_.at(index);
   }
   auto EraseAllAfterIndex(int index) -> void {
@@ -74,6 +93,59 @@ class RaftLog {
     auto end = data_.end();
     return {begin, end};
   }
+  auto Persist() -> int {
+    std::scoped_lock<std::mutex> lock(mtx_);
+    std::vector<uint8_t> buffer(bm_->block_size());
+    auto block_idx = 1;
+    //    LOG_FORMAT_INFO("persist {}", entries_to_str(data_));
+    int sum = 0;
+    int entry_per_block = bm_->block_size() / sizeof(Entry<Command>);
+    int i = 0;
+    auto size = data_.size();
+    while (true) {
+      auto index = i + (block_idx - 1) * entry_per_block;
+      if (index >= data_.size()) {
+        LOG_FORMAT_ERROR("index {} i {} block_idx {} per {} sum {} size {}", index, i, block_idx, entry_per_block, sum,
+                         data_.size());
+      }
+      auto entry = data_.at(index);
+      *((Entry<Command> *)buffer.data() + i) = entry;
+      if (i == entry_per_block - 1) {
+        bm_->write_block(block_idx, buffer.data());
+        block_idx++;
+        buffer.clear();
+        buffer.resize(bm_->block_size());
+        i = 0;
+      } else {
+        i++;
+      }
+      sum++;
+      if (sum == size) {
+        break;
+      }
+    }
+    bm_->write_block(block_idx, buffer.data());
+    return block_idx;
+  }
+  void Recover(int block_num) {
+    std::scoped_lock<std::mutex> lock(mtx_);
+    data_.clear();
+    std::vector<uint8_t> buffer(bm_->block_size());
+    bool first = true;
+    for (int i = 1; i <= block_num; ++i) {
+      bm_->read_block(i, buffer.data());
+      for (int j = 0; j < bm_->block_size() / sizeof(Entry<Command>); ++j) {
+        Entry<Command> entry = *((Entry<Command> *)buffer.data() + j);
+        if (entry.term == 0 && entry.command.value == 0) {
+          if (!first) {
+            break;
+          }
+          first = false;
+        }
+        data_.emplace_back(entry);
+      }
+    }
+  }
 
  private:
   std::shared_ptr<BlockManager> bm_;
@@ -83,7 +155,7 @@ class RaftLog {
 };
 
 template <typename Command>
-RaftLog<Command>::RaftLog(std::shared_ptr<BlockManager> bm) : bm_(std::move(bm)), mtx_{}, data_{} {
+RaftLog<Command>::RaftLog(std::shared_ptr<BlockManager> bm) : bm_(bm), mtx_{}, data_{} {
   /* Lab3: Your code here */
 }
 
