@@ -204,6 +204,7 @@ class RaftNode {
   std::shared_ptr<BlockManager> bm;
   int last_include_index{0};
   int last_include_term{0};
+  int state_size{1};
 
   void become_leader();
   void become_follower(int term, int id_leader);
@@ -443,18 +444,31 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   //  arg.prev_log_index,
   //           arg.prev_log_term, arg.leader_id, arg.leader_commit, arg.term,
   //           debug::entries_to_str(arg.entries).c_str())
+  if (arg.last_include_index != 0) {
+    last_include_index = arg.last_include_index;
+    log_storage->EraseAllAfterIndex(arg.prev_log_index + 1);
+    for (int i = 0; i < arg.entries.size(); ++i) {
+      log_storage->Insert(arg.prev_log_index + i + 1, arg.entries.at(i));
+    }
+    commit_index = std::min(log_storage->Size() - 1, arg.leader_commit);
+    persist();
+    RAFT_LOG("update commit_idx %d", commit_index)
+    //    RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
+    return {current_term, true};
+  }
   if (arg.prev_log_index != 0 && !(arg.prev_log_index <= log_storage->Size() - 1 &&
                                    log_storage->At(arg.prev_log_index).term == arg.prev_log_term)) {
+    //    RAFT_LOG("error %d", __LINE__)
     return {current_term, false};
   }
   log_storage->EraseAllAfterIndex(arg.prev_log_index + 1);
   for (int i = 0; i < arg.entries.size(); ++i) {
     log_storage->Insert(arg.prev_log_index + i + 1, arg.entries.at(i));
   }
-  commit_index = std::min(log_storage->Size() - 1 + last_include_index, arg.leader_commit);
+  commit_index = std::min(log_storage->Size() - 1, arg.leader_commit);
   persist();
   RAFT_LOG("update commit_idx %d", commit_index)
-  RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
+  //  RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
   return {current_term, true};
 }
 
@@ -489,7 +503,7 @@ void RaftNode<StateMachine, Command>::handle_append_entries_reply(int target, co
     if (agree_num >= node_configs.size() / 2 + 1 && log_storage->At(N).term == current_term) {
       commit_index = N;
       RAFT_LOG("update commit_idx %d", commit_index)
-      RAFT_LOG("log %s", debug::entries_to_str(log_storage->Data()).c_str())
+      //      RAFT_LOG("log %s", debug::entries_to_str(log_storage->Data()).c_str())
     }
   }
 }
@@ -652,11 +666,14 @@ void RaftNode<StateMachine, Command>::run_background_commit() {
         }
         auto prev_term = log_storage->At(prev_idx).term;
         auto entries = log_storage->GetAllAfterIndex(prev_idx);
-        RAFT_LOG(
-            "send append to %d prev_idx:%d prev_term:%d leader:%d leader_commit:%d, term:%d"
-            " entries:%s",
-            node_id, prev_idx, prev_term, my_id, commit_index, current_term, debug::entries_to_str(entries).c_str())
-        auto args = AppendEntriesArgs<Command>{current_term, my_id, prev_idx, prev_term, commit_index, false, entries};
+        //        RAFT_LOG(
+        //            "send append to %d prev_idx:%d prev_term:%d leader:%d leader_commit:%d, term:%d"
+        //            " entries:%s",
+        //            node_id, prev_idx, prev_term, my_id, commit_index, current_term,
+        //            debug::entries_to_str(entries).c_str())
+        auto args = AppendEntriesArgs<Command>{
+            current_term, my_id, prev_idx, prev_term, commit_index, false, last_include_index, entries,
+        };
         thread_pool->enqueue(&RaftNode::send_append_entries, this, node_id, args);
       }
     }
@@ -683,6 +700,7 @@ void RaftNode<StateMachine, Command>::run_background_apply() {
         auto entry = log_storage->At(index);
         state->apply_log(entry.command);
       }
+      state->num_append_logs = 0;
     }
   }
 }
@@ -710,7 +728,7 @@ void RaftNode<StateMachine, Command>::run_background_ping() {
       }
       for (const auto &node_id : peer) {
         //        auto next = next_index[node_id];
-        auto args = AppendEntriesArgs<Command>{current_term, my_id, 0, 0, commit_index, true, {}};
+        auto args = AppendEntriesArgs<Command>{current_term, my_id, 0, 0, commit_index, true, last_include_index, {}};
         thread_pool->enqueue(&RaftNode::send_append_entries, this, node_id, args);
       }
     }
