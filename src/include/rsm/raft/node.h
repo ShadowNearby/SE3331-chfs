@@ -41,7 +41,7 @@ class Timer {
  public:
   Timer(int random, int base) : random(random), base(base) { interval = generator.rand(0, random) + base; };
   void reset() {
-    interval = rand() % random + base;
+    interval = generator.rand(0, random) + base;
     start_time = std::chrono::steady_clock::now();
     receive_heartbeat = false;
   }
@@ -202,6 +202,8 @@ class RaftNode {
   std::unique_ptr<ThreadPool> debug_thread_pool;
   Timer vote_timer;
   std::shared_ptr<BlockManager> bm;
+  int last_include_index{0};
+  int last_include_term{0};
 
   void become_leader();
   void become_follower(int term, int id_leader);
@@ -254,9 +256,7 @@ RaftNode<StateMachine, Command>::RaftNode(int node_id, std::vector<RaftNodeConfi
     }
     peer.emplace_back(node.node_id);
   }
-  for (const auto &node : node_configs) {
-    rpc_clients_map[node.node_id] = std::make_unique<RpcClient>(node.ip_address, node.port, true);
-  }
+
   recover();
   for (const auto &node : peer) {
     next_index[node] = log_storage->Size();
@@ -286,7 +286,9 @@ RaftNode<StateMachine, Command>::~RaftNode() {
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::start() -> int {
   /* Lab3: Your code here */
-
+  for (const auto &node : node_configs) {
+    rpc_clients_map[node.node_id] = std::make_unique<RpcClient>(node.ip_address, node.port, true);
+  }
   stopped = false;
   role = RaftRole::Follower;
   vote_timer.start();
@@ -338,13 +340,20 @@ auto RaftNode<StateMachine, Command>::new_command(std::vector<u8> cmd_data, int 
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::save_snapshot() -> bool {
   /* Lab3: Your code here */
+  last_include_index = log_storage->Size() - 1;
+  last_include_term = log_storage->Back().term;
+  std::vector<u8> snapshot = get_snapshot();
+  log_storage->SaveSnapshot(my_id, last_include_index, last_include_term, 0, snapshot, true);
+  for (const auto &node : peer) {
+    next_index[node] = log_storage->Size();
+    match_index[node] = next_index[node] - 1;
+  }
   return true;
 }
 
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::get_snapshot() -> std::vector<u8> {
-  /* Lab3: Your code here */
-  return std::vector<u8>{};
+  return log_storage->GetSnapshot();
 }
 
 /******************************************************************
@@ -418,17 +427,13 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   /* Lab3: Your code here */
   auto arg = transform_rpc_append_entries_args<Command>(rpc_arg);
   if (arg.term < current_term) {
-    //    RAFT_LOG("420 from %d", arg.leader_id)
     return {current_term, false};
   }
-  //  if (current_term < arg.term) {
-  //  RAFT_LOG("receive from leader %d", arg.leader_id)
   if (arg.heart_beat) {
-    if (arg.term > current_term) {
+    if (arg.term >= current_term) {
       vote_for = -1;
       become_follower(arg.term, arg.leader_id);
     }
-    //  }
     leader_id = arg.leader_id;
     vote_timer.receive();
     return {current_term, true};
@@ -446,9 +451,10 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   for (int i = 0; i < arg.entries.size(); ++i) {
     log_storage->Insert(arg.prev_log_index + i + 1, arg.entries.at(i));
   }
-  commit_index = std::min(log_storage->Size() - 1, arg.leader_commit);
+  commit_index = std::min(log_storage->Size() - 1 + last_include_index, arg.leader_commit);
   persist();
-  //  RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str());
+  RAFT_LOG("update commit_idx %d", commit_index)
+  RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
   return {current_term, true};
 }
 
@@ -483,7 +489,7 @@ void RaftNode<StateMachine, Command>::handle_append_entries_reply(int target, co
     if (agree_num >= node_configs.size() / 2 + 1 && log_storage->At(N).term == current_term) {
       commit_index = N;
       RAFT_LOG("update commit_idx %d", commit_index)
-      //      RAFT_LOG("log %s", debug::entries_to_str(log_storage->Data()).c_str())
+      RAFT_LOG("log %s", debug::entries_to_str(log_storage->Data()).c_str())
     }
   }
 }
@@ -491,7 +497,19 @@ void RaftNode<StateMachine, Command>::handle_append_entries_reply(int target, co
 template <typename StateMachine, typename Command>
 auto RaftNode<StateMachine, Command>::install_snapshot(InstallSnapshotArgs args) -> InstallSnapshotReply {
   /* Lab3: Your code here */
-  return InstallSnapshotReply{};
+  if (current_term > args.term) {
+    return {current_term};
+  }
+  //  auto filename = log_storage->SaveSnapshot(my_id, args.last_included_index, args.last_included_term, args.offset,
+  //                                            args.data, args.done);
+  //  if (filename == "") {
+  //    return {current_term};
+  //  }
+  //  std::ifstream fs(filename, std::ios::binary | std::ios::in);
+  //  std::string str((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+  //  std::vector<uint8_t> data{str.begin(), str.end()};
+  //  state->apply_snapshot(data);
+  return {current_term};
 }
 
 template <typename StateMachine, typename Command>
@@ -571,8 +589,6 @@ void RaftNode<StateMachine, Command>::run_background_election() {
       }
       /* Lab3: Your code here */
       std::this_thread::sleep_for(vote_timer.get_interval());
-      //      {
-      //        std::scoped_lock<std::mutex> lock(mtx);
       if (role == RaftRole::Leader) {
         continue;
       }
@@ -592,7 +608,6 @@ void RaftNode<StateMachine, Command>::run_background_election() {
       current_term++;
       vote_for = my_id;
       granted_vote = 1;
-      //      }
       if (role != RaftRole::Candidate) {
         continue;
       }
@@ -627,6 +642,9 @@ void RaftNode<StateMachine, Command>::run_background_commit() {
         continue;
       }
       for (const auto node_id : peer) {
+        if (!rpc_clients_map[node_id]) {
+          continue;
+        }
         auto next_idx = next_index[node_id];
         auto prev_idx = next_idx - 1;
         if (prev_idx > log_storage->Size() - 1) {
@@ -634,10 +652,10 @@ void RaftNode<StateMachine, Command>::run_background_commit() {
         }
         auto prev_term = log_storage->At(prev_idx).term;
         auto entries = log_storage->GetAllAfterIndex(prev_idx);
-        //        RAFT_LOG("send append to %d prev_idx:%d prev_term:%d leader:%d leader_commit:%d, term:%d entries:%s",
-        //        node_id,
-        //                 prev_idx, prev_term, my_id, commit_index, current_term,
-        //                 debug::entries_to_str(entries).c_str())
+        RAFT_LOG(
+            "send append to %d prev_idx:%d prev_term:%d leader:%d leader_commit:%d, term:%d"
+            " entries:%s",
+            node_id, prev_idx, prev_term, my_id, commit_index, current_term, debug::entries_to_str(entries).c_str())
         auto args = AppendEntriesArgs<Command>{current_term, my_id, prev_idx, prev_term, commit_index, false, entries};
         thread_pool->enqueue(&RaftNode::send_append_entries, this, node_id, args);
       }
@@ -661,7 +679,8 @@ void RaftNode<StateMachine, Command>::run_background_apply() {
       std::this_thread::sleep_for(std::chrono::milliseconds{300});
       persist();
       for (int i = state->store.size(); i <= commit_index; ++i) {
-        auto entry = log_storage->At(i);
+        auto index = i;
+        auto entry = log_storage->At(index);
         state->apply_log(entry.command);
       }
     }

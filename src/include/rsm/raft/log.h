@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <mutex>
+#include <sstream>
 #include <utility>
 #include <vector>
 #include "block/manager.h"
@@ -146,11 +147,50 @@ class RaftLog {
       }
     }
   }
+  void SaveSnapshot(int node_id, int last_included_index, int last_included_term, int offset, std::vector<u8> data,
+                    bool done) {
+    int current_snapshot_index = snapshot_index + 1;
+    std::string file_name = fmt::format("/tmp/raft_log/node_{}_index_{}.snapshot", node_id, current_snapshot_index);
+    std::fstream fs(file_name, std::ios::binary);
+    if ((!fs.good() && offset != 0) || (fs.good() && offset == 0)) {
+      return;
+    }
+    fs.open(file_name, std::ios::binary | std::ios::out);
+    fs.seekp(offset, std::ios::beg);
+    fs.write(reinterpret_cast<char *>(data.data()), data.size());
+    fs.close();
+    if (!done) {
+      return;
+    }
+    for (int i = 0; i < current_snapshot_index; ++i) {
+      std::remove(fmt::format("/tmp/raft_log/node_{}_index_{}.snapshot", node_id, i).c_str());
+    }
+    snapshot_index = current_snapshot_index;
+    //    if (last_included_index <= (int)data_.size() - 1 && last_included_term == data_.at(last_included_index).term)
+    //    {
+    //      data_.erase(data_.begin() + 1, data_.begin() + last_included_index + 1);
+    //    } else {
+    //      data_.erase(data_.begin() + 1, data_.end());
+    //    }
+    LOG_FORMAT_INFO("after save snapshot {}", entries_to_str(data_));
+  }
+  std::vector<u8> GetSnapshot() {
+    std::stringstream ss;
+    int size = data_.size();
+    ss << size << ' ';
+    for (int i = 0; i < size; ++i) {
+      ss << data_.at(i).command.value << ' ';
+    }
+    auto str = ss.str();
+    return std::vector<u8>{str.begin(), str.end()};
+  }
+  int GetSnapshotIndex() { return snapshot_index; }
 
  private:
   std::shared_ptr<BlockManager> bm_;
   std::mutex mtx_;
   std::vector<Entry<Command>> data_;
+  int snapshot_index{-1};
   /* Lab3: Your code here */
 };
 
