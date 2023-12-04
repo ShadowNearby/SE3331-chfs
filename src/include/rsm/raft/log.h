@@ -17,7 +17,7 @@ template <typename Command>
 struct Entry {
   int term;
   Command command;
-  std::string to_string() const { return fmt::format("term:{} command:{}", term, command.value); }
+  std::string to_string() const { return fmt::format("{} {}", term, command.value); }
 };
 template <typename Command>
 
@@ -172,7 +172,7 @@ class RaftLog {
     //    } else {
     //      data_.erase(data_.begin() + 1, data_.end());
     //    }
-    LOG_FORMAT_INFO("after save snapshot {}", entries_to_str(data_));
+    //    LOG_FORMAT_INFO("after save snapshot {}", entries_to_str(data_));
   }
   std::vector<u8> GetSnapshot() {
     std::stringstream ss;

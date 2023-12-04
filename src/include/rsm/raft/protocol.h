@@ -48,23 +48,52 @@ struct AppendEntriesArgs {
 
 struct RpcAppendEntriesArgs {
   /* Lab3: Your code here */
-  std::vector<uint8_t> data;
+  std::string data;
+
   MSGPACK_DEFINE(data)
 };
 
 template <typename Command>
 RpcAppendEntriesArgs transform_append_entries_args(const AppendEntriesArgs<Command> &arg) {
   /* Lab3: Your code here */
-  std::vector<u8> buffer(sizeof(arg));
-  *(AppendEntriesArgs<Command> *)buffer.data() = arg;
-  return RpcAppendEntriesArgs{buffer};
+  std::stringstream ss;
+  ss << arg.term << ' ';
+  ss << arg.leader_id << ' ';
+  ss << arg.prev_log_index << ' ';
+  ss << arg.prev_log_term << ' ';
+  ss << arg.leader_commit << ' ';
+  ss << arg.heart_beat << ' ';
+  ss << arg.last_include_index << ' ';
+  ss << arg.entries.size() << ' ';
+  for (const Entry<Command> &entry : arg.entries) {
+    ss << entry.to_string() << ' ';
+  }
+  return RpcAppendEntriesArgs{ss.str()};
 }
 
 template <typename Command>
 AppendEntriesArgs<Command> transform_rpc_append_entries_args(const RpcAppendEntriesArgs &rpc_arg) {
   /* Lab3: Your code here */
-  AppendEntriesArgs<Command> args = *(AppendEntriesArgs<Command> *)(rpc_arg.data.data());
-  return args;
+  int term;
+  int leader_id;
+  int prev_log_index;
+  int prev_log_term;
+  int leader_commit;
+  bool heart_beat;
+  int last_include_index;
+  int entry_size;
+  int tmp_term;
+  int value;
+  std::vector<Entry<Command>> entries;
+  auto str = rpc_arg.data;
+  std::stringstream ss(str);
+  ss >> term >> leader_id >> prev_log_index >> prev_log_term >> leader_commit >> heart_beat >> last_include_index >>
+      entry_size;
+  for (int i = 0; i < entry_size; ++i) {
+    ss >> tmp_term >> value;
+    entries.emplace_back(Entry<Command>{tmp_term, Command{value}});
+  }
+  return {term, leader_id, prev_log_index, prev_log_term, leader_commit, heart_beat, last_include_index, entries};
 }
 
 struct AppendEntriesReply {

@@ -452,7 +452,7 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
     }
     commit_index = std::min(log_storage->Size() - 1, arg.leader_commit);
     persist();
-    RAFT_LOG("update commit_idx %d", commit_index)
+    //    RAFT_LOG("update commit_idx %d", commit_index)
     //    RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
     return {current_term, true};
   }
@@ -467,7 +467,7 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   }
   commit_index = std::min(log_storage->Size() - 1, arg.leader_commit);
   persist();
-  RAFT_LOG("update commit_idx %d", commit_index)
+  //  RAFT_LOG("update commit_idx %d", commit_index)
   //  RAFT_LOG("after append log:%s", debug::entries_to_str(log_storage->Data()).c_str())
   return {current_term, true};
 }
@@ -502,7 +502,7 @@ void RaftNode<StateMachine, Command>::handle_append_entries_reply(int target, co
     }
     if (agree_num >= node_configs.size() / 2 + 1 && log_storage->At(N).term == current_term) {
       commit_index = N;
-      RAFT_LOG("update commit_idx %d", commit_index)
+      //      RAFT_LOG("update commit_idx %d", commit_index)
       //      RAFT_LOG("log %s", debug::entries_to_str(log_storage->Data()).c_str())
     }
   }
@@ -765,7 +765,7 @@ void RaftNode<StateMachine, Command>::become_candidate() {
   vote_for = my_id;
   granted_vote = 1;
   persist();
-  RAFT_LOG("become candidate")
+  //  RAFT_LOG("become candidate")
 }
 
 template <typename StateMachine, typename Command>
