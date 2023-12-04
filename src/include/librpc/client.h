@@ -17,7 +17,7 @@
 
 namespace chfs {
 
-const u32 KFailureRate = 8;  // Network failure rate = 1/KFailureRate
+const u32 KFailureRate = 8; // Network failure rate = 1/KFailureRate
 
 using RpcResponse = RPCLIB_MSGPACK::object_handle;
 
@@ -29,7 +29,7 @@ using RpcResponse = RPCLIB_MSGPACK::object_handle;
  * and disconnects when destroyed.
  */
 class RpcClient {
- public:
+public:
   /**
    * Construct a Client.
    *
@@ -69,16 +69,20 @@ class RpcClient {
    * `RpcResponse`.
    */
   template <typename... Args>
-  auto call(std::string const &name, Args... args) -> ChfsResult<std::shared_ptr<RpcResponse>> {
+  auto call(std::string const &name, Args... args)
+      -> ChfsResult<std::shared_ptr<RpcResponse>> {
     // Calculate whether the request is reliable or not
-    bool valid = reliable || (!reliable && (generator.rand(1, KFailureRate * 10)) > 10);
+    bool valid =
+        reliable ||
+        (!reliable && (generator.rand(1, KFailureRate * 10)) > 10);
 
     if (valid) {
       // Send, wait and return
       rpc_count.fetch_add(1);
       auto res = client->call(name, args...);
 
-      return ChfsResult<std::shared_ptr<RpcResponse>>(std::make_shared<RpcResponse>(res.get(), std::move(res.zone())));
+      return ChfsResult<std::shared_ptr<RpcResponse>>(
+          std::make_shared<RpcResponse>(res.get(), std::move(res.zone())));
     } else {
       // Judge whether we should send the request or just directly drop
       // the request as if timeout
@@ -108,9 +112,12 @@ class RpcClient {
    * `std::future<RpcResponse>`.
    */
   template <typename... Args>
-  auto async_call(std::string const &name, Args... args) -> ChfsResult<std::shared_ptr<std::future<RpcResponse>>> {
+  auto async_call(std::string const &name, Args... args)
+      -> ChfsResult<std::shared_ptr<std::future<RpcResponse>>> {
     // Also check whether the req is valid or not
-    bool valid = reliable || (!reliable && (generator.rand(1, KFailureRate * 10)) > 10);
+    bool valid =
+        reliable ||
+        (!reliable && (generator.rand(1, KFailureRate * 10)) > 10);
 
     if (valid) {
       rpc_count.fetch_add(1);
@@ -121,11 +128,13 @@ class RpcClient {
       // Judge whether we should send the request or just directly drop
       // the request as if timeout
       if (generator.rand(1, 10) < 5)
-        return ChfsResult<std::shared_ptr<std::future<RpcResponse>>>(ErrorType::BadResponse);
+        return ChfsResult<std::shared_ptr<std::future<RpcResponse>>>(
+            ErrorType::BadResponse);
       else {
         // Send it since we don't care about the return value
         client->send(name, args...);
-        return ChfsResult<std::shared_ptr<std::future<RpcResponse>>>(ErrorType::RpcTimeout);
+        return ChfsResult<std::shared_ptr<std::future<RpcResponse>>>(
+            ErrorType::RpcTimeout);
       }
     }
   };
@@ -144,11 +153,11 @@ class RpcClient {
    * Set client reliability
    */
   auto set_reliable(bool r) -> bool;
-
- private:
+  
+private:
   std::unique_ptr<rpc::client> client;
   bool reliable;
   std::atomic_int rpc_count;
   RandomNumberGenerator generator;
 };
-}  // namespace chfs
+} // namespace chfs

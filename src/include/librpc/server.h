@@ -27,7 +27,7 @@ namespace chfs {
  * start listening on the port.
  */
 class RpcServer {
- public:
+public:
   /**
    * Constructs a rpc server that listens on `localhost` with the given port.
    * @param port: The port number to listen on.
@@ -105,8 +105,7 @@ class RpcServer {
    *
    * @tparam F: the type of the handler.
    */
-  template <typename F>
-  void bind(std::string const &name, F handler) {
+  template <typename F> void bind(std::string const &name, F handler) {
     server->bind(name, handler);
   }
 
@@ -128,7 +127,7 @@ class RpcServer {
   auto names() -> std::vector<std::string> { return server->names(); }
 
   /**
-   * Gets the port
+   * Gets the port 
    */
   unsigned short port() const { return server->port(); }
 
@@ -142,8 +141,8 @@ class RpcServer {
    */
   void close_sessions();
 
- private:
+private:
   std::unique_ptr<rpc::server> server;
 };
 
-}  // namespace chfs
+} // namespace chfs
