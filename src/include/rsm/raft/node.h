@@ -458,7 +458,6 @@ auto RaftNode<StateMachine, Command>::append_entries(RpcAppendEntriesArgs rpc_ar
   }
   if (arg.prev_log_index != 0 && !(arg.prev_log_index <= log_storage->Size() - 1 &&
                                    log_storage->At(arg.prev_log_index).term == arg.prev_log_term)) {
-    //    RAFT_LOG("error %d", __LINE__)
     return {current_term, false};
   }
   log_storage->EraseAllAfterIndex(arg.prev_log_index + 1);
