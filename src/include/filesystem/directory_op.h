@@ -16,8 +16,7 @@ struct DirectoryEntry {
 /**
  * Read the directory information and convert it to a string
  */
-auto dir_list_to_string(const std::list<DirectoryEntry> &entries)
-    -> std::string;
+auto dir_list_to_string(const std::list<DirectoryEntry> &entries) -> std::string;
 
 /**
  * Parse a directory of content "name0:inode0/name1:inode1/ ..."
@@ -38,8 +37,7 @@ void parse_directory(std::string &src, std::list<DirectoryEntry> &list);
  * @param filename: the filename to append
  * @param id: the inode id to append
  */
-auto append_to_directory(std::string src, std::string filename, inode_id_t id)
-    -> std::string;
+auto append_to_directory(std::string src, std::string filename, inode_id_t id) -> std::string;
 
 /**
  * Remove an entry from the directory.
@@ -61,7 +59,6 @@ auto rm_from_directory(std::string src, std::string filename) -> std::string;
  * ## Warn: we don't check whether the inode is a directory or not
  * We assume the upper layer should handle this
  */
-auto read_directory(FileOperation *fs, inode_id_t inode,
-                    std::list<DirectoryEntry> &list) -> ChfsNullResult;
+auto read_directory(FileOperation *fs, inode_id_t inode, std::list<DirectoryEntry> &list) -> ChfsNullResult;
 
-} // namespace chfs
+}  // namespace chfs

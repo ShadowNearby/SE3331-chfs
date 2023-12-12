@@ -2,8 +2,8 @@
 #include "metadata/manager.h"
 #include "metadata/superblock.h"
 
-#include "gtest/gtest.h"
 #include <cstring>
+#include "gtest/gtest.h"
 
 namespace chfs {
 
@@ -11,18 +11,16 @@ const usize test_block_cnt = 4096;
 const usize test_block_sz = 4096;
 
 class InodeManagerTest : public ::testing::Test {
-protected:
+ protected:
   u64 test_inode_num;
   std::shared_ptr<BlockManager> bm;
   std::shared_ptr<InodeManager> inode_manager;
 
   // This function is called before every test.
   void SetUp() override {
-    bm = std::shared_ptr<BlockManager>(
-        new BlockManager(test_block_cnt, test_block_sz));
+    bm = std::shared_ptr<BlockManager>(new BlockManager(test_block_cnt, test_block_sz));
     test_inode_num = 1024;
-    inode_manager =
-        std::shared_ptr<InodeManager>(new InodeManager(bm, test_inode_num));
+    inode_manager = std::shared_ptr<InodeManager>(new InodeManager(bm, test_inode_num));
     ASSERT_GE(inode_manager->get_max_inode_supported(), test_inode_num);
     test_inode_num = inode_manager->get_max_inode_supported();
   }
@@ -43,8 +41,7 @@ TEST_F(InodeManagerTest, InitAndTable) {
 }
 
 TEST_F(InodeManagerTest, Allocation) {
-  auto inode_manager1 =
-      InodeManager::create_from_block_manager(bm, test_inode_num).unwrap();
+  auto inode_manager1 = InodeManager::create_from_block_manager(bm, test_inode_num).unwrap();
   ASSERT_EQ(inode_manager1.get_max_inode_supported(), test_inode_num);
 
   auto free_inode_cnt = inode_manager1.free_inode_cnt().unwrap();
@@ -61,12 +58,10 @@ TEST_F(InodeManagerTest, Allocation) {
       break;
     }
     auto free_block = free_block_res.unwrap();
-    auto inode_id =
-        inode_manager1.allocate_inode(InodeType::Directory, free_block)
-            .unwrap();
+    auto inode_id = inode_manager1.allocate_inode(InodeType::Directory, free_block).unwrap();
     ASSERT_EQ(inode_id, i + 1);
     prev_id = free_block;
   }
 }
 
-} // namespace chfs
+}  // namespace chfs

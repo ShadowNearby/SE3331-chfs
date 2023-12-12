@@ -27,8 +27,7 @@ auto vec_equal(std::vector<u8> &a, std::vector<u8> &b) -> bool {
 
   for (uint i = 0; i < a.size(); ++i) {
     if (a[i] != b[i]) {
-      std::cerr << "check error at [" << i << "]: " << (char)a[i] << " vs "
-                << (char)b[i] << std::endl;
+      std::cerr << "check error at [" << i << "]: " << (char)a[i] << " vs " << (char)b[i] << std::endl;
       return false;
     }
   }
@@ -38,8 +37,7 @@ auto vec_equal(std::vector<u8> &a, std::vector<u8> &b) -> bool {
 TEST(FileSystemTest, WriteLargeFile) {
   std::mt19937 rng(get_test_seed());
 
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
 
   std::unordered_map<inode_id_t, std::vector<u8>> contents;
@@ -74,8 +72,7 @@ TEST(FileSystemTest, WriteLargeFile) {
 }
 
 TEST(FileSystemTest, SetAttr) {
-  auto bm =
-      std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kBlockNum, kBlockSize));
   auto fs = FileOperation(bm, kTestInodeNum);
   auto res = fs.alloc_inode(InodeType::FILE);
   ASSERT_TRUE(res.is_ok());
@@ -108,4 +105,4 @@ TEST(FileSystemTest, SetAttr) {
   ASSERT_EQ(final_free_block_num, second_free_block_num);
 }
 
-} // namespace chfs
+}  // namespace chfs

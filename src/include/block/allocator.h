@@ -23,8 +23,8 @@ class InodeManager;
 /**
  * BlockManager implements a block allocator to manage blocks of the manager
  * It internally uses bitmap for the management.
- * Note that the block allocator is **not** thread-safe. In lab2, you should make
- * it thread-safe.
+ * Note that the block allocator is **not** thread-safe. In lab2, you should
+ * make it thread-safe.
  *
  * # Example
  *
@@ -34,10 +34,10 @@ class BlockAllocator {
   friend class SuperBlock;
   friend class nodeManager;
 
-public:
+ public:
   std::shared_ptr<BlockManager> bm;
 
-protected:
+ protected:
   // The bitmap block is stored at [bitmap_block_id, bitmap_block_id +
   // bitmap_block_cnt - 1]
   block_id_t bitmap_block_id;
@@ -46,7 +46,7 @@ protected:
   // number of bits needed in the last bitmap block
   usize last_block_num;
 
-public:
+ public:
   /**
    * Creates a new block allocator with a block manager.
    * The first block is used to store the bitmap.
@@ -66,8 +66,7 @@ public:
    * We assume that the blocks before the `bitmap_block_id` is reserved,
    * so they cannot be allocated.
    */
-  BlockAllocator(std::shared_ptr<BlockManager> bm, usize bitmap_block_id,
-                 bool will_initialize = true);
+  BlockAllocator(std::shared_ptr<BlockManager> bm, usize bitmap_block_id, bool will_initialize = true);
 
   auto total_bitmap_block() -> usize { return this->bitmap_block_cnt; }
 
@@ -97,4 +96,4 @@ public:
   auto deallocate(block_id_t block_id) -> ChfsNullResult;
 };
 
-} // namespace chfs
+}  // namespace chfs

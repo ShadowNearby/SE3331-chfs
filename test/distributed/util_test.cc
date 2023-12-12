@@ -4,7 +4,7 @@
 namespace chfs {
 
 class UtilTest : public ::testing::Test {
-protected:
+ protected:
   // This function is called before every test.
   void SetUp() override {}
 
@@ -37,4 +37,4 @@ TEST_F(UtilTest, WithEmptyMap) {
   EXPECT_EQ(map_new.size(), 0);
 }
 
-} // namespace chfs
+}  // namespace chfs

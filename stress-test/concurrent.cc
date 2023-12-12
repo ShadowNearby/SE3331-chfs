@@ -1,16 +1,16 @@
 #include <gtest/gtest.h>
-#include <random>
-#include <unordered_set>
-#include <thread>
 #include <chrono>
+#include <random>
+#include <thread>
+#include <unordered_set>
 
-#include "distributed/metadata_server.h"
 #include "distributed/dataserver.h"
+#include "distributed/metadata_server.h"
 
 namespace chfs {
 
 class MetadataConcurrentStressTest : public ::testing::Test {
-protected:
+ protected:
   // In this test, we simulate 4 nodes: 1 metadata server and 3 data servers.
   const u16 meta_port = 8080;
   const u16 data_ports[3] = {8081, 8082, 8083};
@@ -29,10 +29,14 @@ protected:
   void SetUp() override { init_sys(); };
 
   // This function is called after every test.
-  void TearDown() override{ shutdown(); clean_data();};
+  void TearDown() override {
+    shutdown();
+    clean_data();
+  };
 
   // Init the whole system
   void init_sys() {
+    clean_data();
     meta_srv = std::make_shared<MetadataServer>(meta_port, inode_path);
     data_srv1 = std::make_shared<DataServer>(data_ports[0], data_path1);
     data_srv2 = std::make_shared<DataServer>(data_ports[1], data_path2);
@@ -61,7 +65,7 @@ protected:
   };
 };
 
-TEST_F(MetadataConcurrentStressTest, StressTest1) {    
+TEST_F(MetadataConcurrentStressTest, StressTest1) {
   const u64 test_iterations = 500;
   ASSERT_TRUE(test_iterations > 0);
 
@@ -78,8 +82,8 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
   auto file2_id = meta_srv->mknode(RegularFileType, dir2_id, "file2");
   ASSERT_EQ(file2_id, 5);
 
-  // In this test, we run the test case for mknode/unlink and allocate block/free block of a node
-  // in many threads and check the invariant we want.
+  // In this test, we run the test case for mknode/unlink and allocate
+  // block/free block of a node in many threads and check the invariant we want.
   bool is_started = false;
   auto threads = std::vector<std::thread>();
   // Let's create 8 threads
@@ -87,149 +91,152 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
   for (u64 i = 0; i < 2; ++i) {
     auto thread_idx = i;
     threads.emplace_back([&, thread_idx]() {
-    // Wait until all threads are started
-    while (!is_started) {
-      std::this_thread::yield();
-    }
-
-    auto inode_id_sets = std::unordered_set<inode_id_t>();
-    for (u64 k = 0; k < test_iterations; ++k) {
-      // Create 100 files in dir1
-      for (u64 j = 0; j < 100; ++j) {
-        std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-        auto file_id = meta_srv->mknode(RegularFileType, dir1_id, name);
-        ASSERT_TRUE(file_id > 0);
-        inode_id_sets.insert(file_id);
+      // Wait until all threads are started
+      while (!is_started) {
+        std::this_thread::yield();
       }
 
-      // Check invariants here
-      EXPECT_EQ(inode_id_sets.size(), 100);
+      auto inode_id_sets = std::unordered_set<inode_id_t>();
+      for (u64 k = 0; k < test_iterations; ++k) {
+        // Create 100 files in dir1
+        for (u64 j = 0; j < 100; ++j) {
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          auto file_id = meta_srv->mknode(RegularFileType, dir1_id, name);
+          ASSERT_TRUE(file_id > 0);
+          inode_id_sets.insert(file_id);
+        }
 
-      // And delete 100 files in dir1
-      for (u64 j = 0; j < 100; ++j) {
-        std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-        auto del_res = meta_srv->unlink(dir1_id, name);
-        ASSERT_TRUE(del_res);
+        // Check invariants here
+        EXPECT_EQ(inode_id_sets.size(), 100);
+
+        // And delete 100 files in dir1
+        for (u64 j = 0; j < 100; ++j) {
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          auto del_res = meta_srv->unlink(dir1_id, name);
+          ASSERT_TRUE(del_res);
+        }
+
+        inode_id_sets.clear();
       }
-
-      inode_id_sets.clear();
-    }
     });
   }
 
   for (u64 i = 0; i < 2; ++i) {
     auto thread_idx = i;
     threads.emplace_back([&, thread_idx]() {
-    // Wait until all threads are started
-    while (!is_started) {
-      std::this_thread::yield();
-    }
-
-    auto inode_id_sets = std::unordered_set<inode_id_t>();
-    for (u64 k = 0; k < test_iterations; ++k) {
-      // Create 100 files in dir1
-      for (u64 j = 0; j < 100; ++j) {
-        std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-        auto file_id = meta_srv->mknode(RegularFileType, dir2_id, name);
-        ASSERT_TRUE(file_id > 0);
-        inode_id_sets.insert(file_id);
+      // Wait until all threads are started
+      while (!is_started) {
+        std::this_thread::yield();
       }
 
-      // Check invariants here
-      EXPECT_EQ(inode_id_sets.size(), 100);
+      auto inode_id_sets = std::unordered_set<inode_id_t>();
+      for (u64 k = 0; k < test_iterations; ++k) {
+        // Create 100 files in dir1
+        for (u64 j = 0; j < 100; ++j) {
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          auto file_id = meta_srv->mknode(RegularFileType, dir2_id, name);
+          ASSERT_TRUE(file_id > 0);
+          inode_id_sets.insert(file_id);
+        }
 
-      // And delete 100 files in dir1
-      for (u64 j = 0; j < 100; ++j) {
-        std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
-        auto del_res = meta_srv->unlink(dir2_id, name);
-        ASSERT_TRUE(del_res);
+        // Check invariants here
+        EXPECT_EQ(inode_id_sets.size(), 100);
+
+        // And delete 100 files in dir1
+        for (u64 j = 0; j < 100; ++j) {
+          std::string name = "file" + std::to_string(thread_idx) + '-' + std::to_string(j);
+          auto del_res = meta_srv->unlink(dir2_id, name);
+          ASSERT_TRUE(del_res);
+        }
+
+        inode_id_sets.clear();
       }
-
-      inode_id_sets.clear();
-    }
     });
   }
 
-  // The next four threads allocate and deallocate blocks from `file1` and `file2`
+  // The next four threads allocate and deallocate blocks from `file1` and
+  // `file2`
   for (u64 i = 0; i < 2; ++i) {
     threads.emplace_back([&]() {
-    // Wait until all threads are started
-    while (!is_started) {
-      std::this_thread::yield();
-    }
-
-    auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
-    for (u64 k = 0; k < test_iterations; ++k) {
-      // Allocate 100 blocks
-      for (u64 j = 0; j < 100; ++j) {
-        auto [block_id, mac_id, version] = meta_srv->allocate_block(file1_id);
-        ASSERT_TRUE(block_id > 0);
-        ASSERT_TRUE(mac_id > 0);
-        active_blocks.push_back({block_id, mac_id});
+      // Wait until all threads are started
+      while (!is_started) {
+        std::this_thread::yield();
       }
 
-      // Check invariants
-      std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
-      for (auto [block_id, mac_id] : active_blocks) {
-        block_id_set_on_macs[mac_id - 1].insert(block_id);
-      }
+      auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
+      for (u64 k = 0; k < test_iterations; ++k) {
+        // Allocate 100 blocks
+        std::cout << k << std::endl;
+        for (u64 j = 0; j < 100; ++j) {
+          auto [block_id, mac_id, version] = meta_srv->allocate_block(file1_id);
+          ASSERT_TRUE(block_id > 0);
+          ASSERT_TRUE(mac_id > 0);
+          active_blocks.push_back({block_id, mac_id});
+        }
 
-      auto block_num = 0;
-      for (auto l = 0; l < 3; ++l) {
-        block_num += block_id_set_on_macs[l].size();
-      }
+        // Check invariants
+        std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
+        for (auto [block_id, mac_id] : active_blocks) {
+          block_id_set_on_macs[mac_id - 1].insert(block_id);
+        }
 
-      ASSERT_EQ(block_num, 100);
+        auto block_num = 0;
+        for (auto l = 0; l < 3; ++l) {
+          block_num += block_id_set_on_macs[l].size();
+        }
 
-      // And free 100 blocks
-      for (auto [block_id, mac_id] : active_blocks) {
-        auto free_res = meta_srv->free_block(file1_id, block_id, mac_id);
-        ASSERT_TRUE(free_res);
+        ASSERT_EQ(block_num, 100);
+
+        // And free 100 blocks
+        for (auto [block_id, mac_id] : active_blocks) {
+          auto free_res = meta_srv->free_block(file1_id, block_id, mac_id);
+          ASSERT_TRUE(free_res);
+        }
+        active_blocks.clear();
       }
-      active_blocks.clear();
-    }
     });
   }
 
   for (u64 i = 0; i < 2; ++i) {
     threads.emplace_back([&]() {
-    // Wait until all threads are started
-    while (!is_started) {
-      std::this_thread::yield();
-    }
-
-    auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
-    for (u64 k = 0; k < test_iterations; ++k) {
-      // Allocate 100 blocks
-      for (u64 j = 0; j < 100; ++j) {
-        auto [block_id, mac_id, version] = meta_srv->allocate_block(file2_id);
-        ASSERT_TRUE(block_id > 0);
-        ASSERT_TRUE(mac_id > 0);
-        active_blocks.push_back({block_id, mac_id});
+      // Wait until all threads are started
+      while (!is_started) {
+        std::this_thread::yield();
       }
 
-      // Check invariants
-      std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
-      for (auto [block_id, mac_id] : active_blocks) {
-        block_id_set_on_macs[mac_id - 1].insert(block_id);
-      }
+      auto active_blocks = std::vector<std::pair<block_id_t, mac_id_t>>();
+      for (u64 k = 0; k < test_iterations; ++k) {
+        // Allocate 100 blocks
+        std::cout << k << std::endl;
+        for (u64 j = 0; j < 100; ++j) {
+          auto [block_id, mac_id, version] = meta_srv->allocate_block(file2_id);
+          ASSERT_TRUE(block_id > 0);
+          ASSERT_TRUE(mac_id > 0);
+          active_blocks.push_back({block_id, mac_id});
+        }
 
-      auto block_num = 0;
-      for (auto l = 0; l < 3; ++l) {
-        block_num += block_id_set_on_macs[l].size();
-      }
+        // Check invariants
+        std::unordered_set<block_id_t> block_id_set_on_macs[3];  // 3 data servers
+        for (auto [block_id, mac_id] : active_blocks) {
+          block_id_set_on_macs[mac_id - 1].insert(block_id);
+        }
 
-      ASSERT_EQ(block_num, 100);
+        auto block_num = 0;
+        for (auto l = 0; l < 3; ++l) {
+          block_num += block_id_set_on_macs[l].size();
+        }
 
-      // And free 100 blocks
-      for (auto [block_id, mac_id] : active_blocks) {
-        auto free_res = meta_srv->free_block(file2_id, block_id, mac_id);
-        ASSERT_TRUE(free_res);
+        ASSERT_EQ(block_num, 100);
+
+        // And free 100 blocks
+        for (auto [block_id, mac_id] : active_blocks) {
+          auto free_res = meta_srv->free_block(file2_id, block_id, mac_id);
+          ASSERT_TRUE(free_res);
+        }
+        active_blocks.clear();
       }
-      active_blocks.clear();
-    }
     });
-  }  
+  }
 
   // Record the start time
   auto start = std::chrono::high_resolution_clock::now();
@@ -253,7 +260,7 @@ TEST_F(MetadataConcurrentStressTest, StressTest1) {
   auto block_map_2 = meta_srv->get_block_map(file2_id);
   EXPECT_EQ(block_map_2.size(), 0);
 
-auto dir_content_1 = meta_srv->readdir(dir1_id);
+  auto dir_content_1 = meta_srv->readdir(dir1_id);
   EXPECT_EQ(dir_content_1.size(), 1);
   EXPECT_EQ(dir_content_1[0].first, "file1");
   EXPECT_EQ(dir_content_1[0].second, 4);
@@ -264,7 +271,7 @@ auto dir_content_1 = meta_srv->readdir(dir1_id);
   EXPECT_EQ(dir_content_2[0].second, 5);
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 int main(int argc, char **argv) {
   // Initialize Google Test

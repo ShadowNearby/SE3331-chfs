@@ -1,11 +1,11 @@
-#include "distributed/dataserver.h"
 #include "distributed/metadata_server.h"
+#include "distributed/dataserver.h"
 #include "gtest/gtest.h"
 
 namespace chfs {
 
 class MetadataServerTest : public ::testing::Test {
-protected:
+ protected:
   // In this test, we simulate 4 nodes: 1 metadata server and 3 data servers.
   const u16 meta_port = 8080;
   const u16 data_ports[3] = {8081, 8082, 8083};
@@ -86,8 +86,7 @@ TEST_F(MetadataServerTest, WriteAnEmptyFile) {
   // Now we have the block and we directly write some
   // bytes into the block
   // create a client to connect with the node
-  auto cli = std::make_shared<RpcClient>("127.0.0.1",
-                                         data_ports[machine_id - 1], true);
+  auto cli = std::make_shared<RpcClient>("127.0.0.1", data_ports[machine_id - 1], true);
 
   // Write some bytes into the block
   std::vector<u8> bytes = {'H', 'e', 'l', 'l', 'o'};
@@ -114,8 +113,7 @@ TEST_F(MetadataServerTest, CheckPersist) {
   EXPECT_GT(machine_id, 0);
   EXPECT_LT(machine_id, 4);
 
-  auto cli = std::make_shared<RpcClient>("127.0.0.1",
-                                         data_ports[machine_id - 1], true);
+  auto cli = std::make_shared<RpcClient>("127.0.0.1", data_ports[machine_id - 1], true);
 
   std::vector<u8> bytes = {'H', 'e', 'l', 'l', 'o'};
   auto write_res = cli->call("write_data", block_id, 0, bytes);
@@ -139,8 +137,7 @@ TEST_F(MetadataServerTest, CheckPersist) {
   EXPECT_EQ(orig_mac_id, machine_id);
 
   // Connect to the data server and read the data
-  cli = std::make_shared<RpcClient>("127.0.0.1", data_ports[orig_mac_id - 1],
-                                    true);
+  cli = std::make_shared<RpcClient>("127.0.0.1", data_ports[orig_mac_id - 1], true);
 
   auto read_res = cli->call("read_data", block_id, 0, 5, orig_version);
   EXPECT_EQ(read_res.is_err(), false);
@@ -148,6 +145,21 @@ TEST_F(MetadataServerTest, CheckPersist) {
   EXPECT_EQ(bytes, read_bytes);
 
   // Dont forget to clean data too
+  clean_data();
+}
+
+TEST_F(MetadataServerTest, Delete) {
+  auto file_id_1 = meta_srv->mknode(RegularFileType, 1, "fileA");
+  EXPECT_EQ(file_id_1, 2);
+  for (int i = 0; i < 100; i++) {
+    auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
+    EXPECT_GT(machine_id, 0);
+    EXPECT_LT(machine_id, 4);
+    auto del_res = meta_srv->free_block(file_id_1, block_id, machine_id);
+    EXPECT_EQ(del_res, true);
+  }
+  auto block_map_1 = meta_srv->get_block_map(file_id_1);
+  EXPECT_EQ(block_map_1.size(), 0);
   clean_data();
 }
 
@@ -160,8 +172,7 @@ TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
   EXPECT_GT(machine_id, 0);
   EXPECT_LT(machine_id, 4);
 
-  auto cli = std::make_shared<RpcClient>("127.0.0.1",
-                                         data_ports[machine_id - 1], true);
+  auto cli = std::make_shared<RpcClient>("127.0.0.1", data_ports[machine_id - 1], true);
 
   std::vector<u8> bytes = {'H', 'e', 'l', 'l', 'o'};
   auto write_res = cli->call("write_data", block_id, 0, bytes);
@@ -175,10 +186,9 @@ TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
 
   auto alloc_res = cli->call("alloc_block");
   EXPECT_EQ(alloc_res.is_err(), false);
-  auto [new_block_id, new_version] =
-      alloc_res.unwrap()->as<std::pair<block_id_t, version_t>>();
+  auto [new_block_id, new_version] = alloc_res.unwrap()->as<std::pair<block_id_t, version_t>>();
   EXPECT_EQ(new_block_id, block_id);
-  EXPECT_EQ(new_version, version + 2); // one free it and one alloc it
+  EXPECT_EQ(new_version, version + 2);  // one free it and one alloc it
 
   // Now the clients want to read the data with the original block version
   auto read_res = cli->call("read_data", block_id, 0, 5, version);
@@ -190,7 +200,6 @@ TEST_F(MetadataServerTest, ReadWhenBlockIsInvalid) {
 }
 
 TEST_F(MetadataServerTest, CheckReadDir) {
-
   auto file_id1 = meta_srv->mknode(RegularFileType, 1, "fileA");
   EXPECT_EQ(file_id1, 2);
 
@@ -247,8 +256,7 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_1);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       t1_res.push_back({block_id, machine_id, version});
@@ -261,8 +269,7 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_1);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       t2_res.push_back({block_id, machine_id, version});
@@ -275,8 +282,7 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_2);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_2);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       t3_res.push_back({block_id, machine_id, version});
@@ -289,8 +295,7 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_2);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_2);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       t4_res.push_back({block_id, machine_id, version});
@@ -349,7 +354,6 @@ TEST_F(MetadataServerTest, CheckInvariant1) {
 }
 
 TEST_F(MetadataServerTest, CheckInvariant2) {
-
   auto dir_id_1 = meta_srv->mknode(DirectoryType, 1, "SubDirA");
   EXPECT_EQ(dir_id_1, 2);
   auto dir_id_2 = meta_srv->mknode(DirectoryType, 1, "SubDirB");
@@ -449,8 +453,7 @@ TEST_F(MetadataServerTest, CheckInvariant3) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_1);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       auto del_res = meta_srv->free_block(file_id_1, block_id, machine_id);
@@ -464,8 +467,7 @@ TEST_F(MetadataServerTest, CheckInvariant3) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_1);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_1);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       auto del_res = meta_srv->free_block(file_id_1, block_id, machine_id);
@@ -479,8 +481,7 @@ TEST_F(MetadataServerTest, CheckInvariant3) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_2);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_2);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       auto del_res = meta_srv->free_block(file_id_2, block_id, machine_id);
@@ -494,8 +495,7 @@ TEST_F(MetadataServerTest, CheckInvariant3) {
     }
 
     for (int i = 0; i < 100; i++) {
-      auto [block_id, machine_id, version] =
-          meta_srv->allocate_block(file_id_2);
+      auto [block_id, machine_id, version] = meta_srv->allocate_block(file_id_2);
       EXPECT_GT(machine_id, 0);
       EXPECT_LT(machine_id, 4);
       auto del_res = meta_srv->free_block(file_id_2, block_id, machine_id);
@@ -608,4 +608,4 @@ TEST_F(MetadataServerTest, CheckInvariant4) {
   clean_data();
 }
 
-} // namespace chfs
+}  // namespace chfs

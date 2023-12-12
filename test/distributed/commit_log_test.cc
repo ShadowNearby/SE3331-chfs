@@ -1,13 +1,14 @@
 #include "distributed/commit_log.h"
-#include "distributed/metadata_server.h"
-#include "gtest/gtest.h"
 #include <chrono>
 #include <thread>
+#include "common/logger.h"
+#include "distributed/metadata_server.h"
+#include "gtest/gtest.h"
 
 namespace chfs {
 
 class CommitLogTest : public ::testing::Test {
-protected:
+ protected:
   const u16 meta_port = 8080;
   const std::string inode_path = "/tmp/inode_file";
 
@@ -109,8 +110,7 @@ TEST_F(CommitLogTest, CheckConcurrentUnlink) {
 }
 
 TEST_F(CommitLogTest, CheckRecoverFromFailure) {
-  auto meta_srv =
-      std::make_shared<MetadataServer>(meta_port, inode_path, true, true, true);
+  auto meta_srv = std::make_shared<MetadataServer>(meta_port, inode_path, true, true, true);
 
   auto mk_res = meta_srv->mknode(DirectoryType, 1, "dir");
   EXPECT_EQ(mk_res, 0);
@@ -130,12 +130,11 @@ TEST_F(CommitLogTest, CheckRecoverFromFailure) {
 }
 
 TEST_F(CommitLogTest, CheckCheckpointFunctional) {
-  auto meta_srv =
-      std::make_shared<MetadataServer>(meta_port, inode_path, true, true);
+  std::remove(inode_path.c_str());
+  auto meta_srv = std::make_shared<MetadataServer>(meta_port, inode_path, true, true);
 
   for (int i = 0; i < 100; i++) {
-    auto mk_res =
-        meta_srv->mknode(DirectoryType, 1, "dir-" + std::to_string(i));
+    auto mk_res = meta_srv->mknode(DirectoryType, 1, "dir-" + std::to_string(i));
     EXPECT_GT(mk_res, 1);
   }
 
@@ -162,4 +161,4 @@ TEST_F(CommitLogTest, CheckCheckpointFunctional) {
   std::remove(inode_path.c_str());
 }
 
-} // namespace chfs
+}  // namespace chfs

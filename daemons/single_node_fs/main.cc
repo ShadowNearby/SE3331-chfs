@@ -7,11 +7,12 @@
  */
 
 #define FUSE_USE_VERSION 26
+
 #include <fuse/fuse_lowlevel.h>
 
+#include <unistd.h>
 #include <iostream>
 #include <string>
-#include <unistd.h>
 
 #include "./consts.h"
 #include "filesystem/directory_op.h"
@@ -21,9 +22,10 @@
 // This header must be include at the bottom
 // Since we need to redefine some MACROS in CHFS
 #include "./logger.h"
+
 namespace chfs {
 
-Logger logger("chfs.log"); // Definition of the global logger instance
+Logger logger("chfs.log");  // Definition of the global logger instance
 
 auto getattr_helper(InodeType type, const FileAttr &attr) -> struct stat {
   struct stat st;
@@ -34,16 +36,16 @@ auto getattr_helper(InodeType type, const FileAttr &attr) -> struct stat {
   st.st_size = attr.size;
 
   switch (type) {
-  case InodeType::FILE:
-    st.st_mode = S_IFREG | 0666;
-    break;
-  case InodeType::Directory:
-    st.st_mode = S_IFDIR | 0777;
-    st.st_nlink += 1;
-    break;
-  default:
-    // links
-    UNIMPLEMENTED();
+    case InodeType::FILE:
+      st.st_mode = S_IFREG | 0666;
+      break;
+    case InodeType::Directory:
+      st.st_mode = S_IFDIR | 0777;
+      st.st_nlink += 1;
+      break;
+    default:
+      // links
+      UNIMPLEMENTED();
   }
   return st;
 }
@@ -89,8 +91,7 @@ struct DirectoryBuf {
 
   auto reply_buf_limited(fuse_req_t req, off_t off, size_t maxsize) -> int {
     if ((size_t)off < this->size)
-      return fuse_reply_buf(req, this->p + off,
-                            std::min(this->size - off, maxsize));
+      return fuse_reply_buf(req, this->p + off, std::min(this->size - off, maxsize));
     else
       return fuse_reply_buf(req, nullptr, 0);
   }
@@ -98,8 +99,7 @@ struct DirectoryBuf {
   ~DirectoryBuf() { free(p); }
 };
 
-void chfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
-                  struct fuse_file_info *fi) {
+void chfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct fuse_file_info *fi) {
   FileOperation *fs = reinterpret_cast<FileOperation *>(fuse_req_userdata(req));
   // logger << "CHFS FUSE readdir\n";
 
@@ -124,9 +124,7 @@ void chfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
   buf.reply_buf_limited(req, off, size);
 }
 
-void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
-               struct fuse_file_info *fi) {
-
+void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct fuse_file_info *fi) {
   FileOperation *fs = reinterpret_cast<FileOperation *>(fuse_req_userdata(req));
 
   auto attr_res = fs->get_type_attr(ino);
@@ -161,8 +159,7 @@ void chfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
   }
 
   auto res_data = res.unwrap();
-  fuse_reply_buf(req, reinterpret_cast<const char *>(res_data.data()),
-                 read_size);
+  fuse_reply_buf(req, reinterpret_cast<const char *>(res_data.data()), read_size);
 }
 
 /** Read the target of a symbolic link
@@ -184,9 +181,7 @@ void chfs_readlink(fuse_req_t req, fuse_ino_t ino) { UNIMPLEMENTED(); }
  * creation of all non-directory, non-symlink nodes.
  */
 // shouldn't that comment be "if" there is no.... ?
-void chfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name,
-                mode_t mode, dev_t rdev) {
-
+void chfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode, dev_t rdev) {
   FileOperation *fs = reinterpret_cast<FileOperation *>(fuse_req_userdata(req));
   struct fuse_entry_param e;
 
@@ -224,8 +219,7 @@ void chfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name,
 }
 
 /** Create a directory */
-void chfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
-                mode_t mode) {
+void chfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode) {
   struct fuse_entry_param e;
 
   // In chfs, timeouts are always set to 0.0, and generations are always set to
@@ -245,11 +239,11 @@ void chfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
   auto res = fs->mkdir(parent, name);
   if (res.is_err()) {
     switch (res.unwrap_error()) {
-    case ErrorType::AlreadyExist:
-      fuse_reply_err(req, EEXIST);
-      break;
-    default:
-      fuse_reply_err(req, ENOSYS);
+      case ErrorType::AlreadyExist:
+        fuse_reply_err(req, EEXIST);
+        break;
+      default:
+        fuse_reply_err(req, ENOSYS);
     }
     return;
   }
@@ -275,14 +269,14 @@ void chfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name) {
   auto res = fs->unlink(parent, name);
   if (res.is_err()) {
     switch (res.unwrap_error()) {
-    case ErrorType::NotExist:
-      fuse_reply_err(req, ENOENT);
-      break;
-    case ErrorType::NotEmpty:
-      fuse_reply_err(req, ENOTEMPTY);
-      break;
-    default:
-      fuse_reply_err(req, ENOSYS);
+      case ErrorType::NotExist:
+        fuse_reply_err(req, ENOENT);
+        break;
+      case ErrorType::NotEmpty:
+        fuse_reply_err(req, ENOTEMPTY);
+        break;
+      default:
+        fuse_reply_err(req, ENOSYS);
     }
     return;
   } else {
@@ -291,19 +285,14 @@ void chfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name) {
 }
 
 /** Remove a directory */
-void chfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name) {
-  UNIMPLEMENTED();
-}
+void chfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name) { UNIMPLEMENTED(); }
 
 /** Create a symbolic link */
 // The parameters here are a little bit confusing, but do correspond
 // to the symlink() system call.  The 'path' is where the link points,
 // while the 'link' is the link itself.  So we need to leave the path
 // unaltered, but insert the link into the mounted directory.
-void chfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent,
-                  const char *name) {
-  UNIMPLEMENTED();
-}
+void chfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name) { UNIMPLEMENTED(); }
 
 //
 // Set the attributes of a file. Often used as part of overwriting
@@ -318,8 +307,7 @@ void chfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent,
 // On success, call fuse_reply_attr, passing the file's new
 // attributes (from a call to getattr()).
 //
-void chfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set,
-                  struct fuse_file_info *fi) {
+void chfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi) {
   FileOperation *fs = reinterpret_cast<FileOperation *>(fuse_req_userdata(req));
 
   // FIXME: currently we only deal with the resize case in the `setattr`
@@ -331,7 +319,7 @@ void chfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set,
   } else {
     auto attr_res = fs->get_type_attr(ino);
     if (attr_res.is_err()) {
-      fuse_reply_err(req, -1); // fatal error
+      fuse_reply_err(req, -1);  // fatal error
       return;
     }
     auto type_attr = attr_res.unwrap();
@@ -344,16 +332,12 @@ void chfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set,
 
 /** Rename a file */
 // both path and newpath are fs-relative
-void chfs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
-                 fuse_ino_t newparent, const char *newname) {
+void chfs_rename(fuse_req_t req, fuse_ino_t parent, const char *name, fuse_ino_t newparent, const char *newname) {
   UNIMPLEMENTED();
 }
 
 /** Create a hard link to a file */
-void chfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent,
-               const char *newname) {
-  UNIMPLEMENTED();
-}
+void chfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname) { UNIMPLEMENTED(); }
 
 /** File open operation
  *
@@ -373,8 +357,7 @@ void chfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
 /** Write data to an open file
  *
  */
-void chfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size,
-                off_t off, struct fuse_file_info *fi) {
+void chfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi) {
   // std::cerr << "[chfs write] file " << ino << " with size {" << size << "}"
   //          << " and off: {" << off << "}.";
 
@@ -383,13 +366,12 @@ void chfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size,
   if (res.is_err()) {
     auto error_code = res.unwrap_error();
     switch (error_code) {
-    case ErrorType::OUT_OF_RESOURCE:
-      std::cerr << "OUT_OF_RESOURCE, free blocks left: "
-                << fs->get_free_blocks_num().unwrap() << std::endl;
-      break;
-    default:
-      UNIMPLEMENTED();
-      break;
+      case ErrorType::OUT_OF_RESOURCE:
+        std::cerr << "OUT_OF_RESOURCE, free blocks left: " << fs->get_free_blocks_num().unwrap() << std::endl;
+        break;
+      default:
+        UNIMPLEMENTED();
+        break;
     }
 
     fuse_reply_err(req, ENOSYS);
@@ -432,9 +414,7 @@ void chfs_statfs(fuse_req_t req, fuse_ino_t ino) { UNIMPLEMENTED(); }
  * Changed in version 2.2
  */
 // this is a no-op in BBFS.  It just logs the call and returns success
-void chfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 /** Release an open file
  *
@@ -450,9 +430,7 @@ void chfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
  *
  * Changed in version 2.2
  */
-void chfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 /** Synchronize file contents
  *
@@ -461,10 +439,7 @@ void chfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
  *
  * Changed in version 2.2
  */
-void chfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync,
-                struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 /** Open directory
  *
@@ -473,18 +448,13 @@ void chfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync,
  *
  * Introduced in version 2.3
  */
-void chfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 /** Release directory
  *
  * Introduced in version 2.3
  */
-void chfs_releasedir(fuse_req_t req, fuse_ino_t ino,
-                     struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 /** Synchronize directory contents
  *
@@ -493,10 +463,7 @@ void chfs_releasedir(fuse_req_t req, fuse_ino_t ino,
  *
  * Introduced in version 2.3
  */
-void chfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
-                   struct fuse_file_info *fi) {
-  UNIMPLEMENTED();
-}
+void chfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi) { UNIMPLEMENTED(); }
 
 static struct fuse_lowlevel_ops fuseserver_oper;
 
@@ -507,8 +474,7 @@ void usage() {
 
 auto pre_process() -> void {
   if ((getuid() == 0) || (geteuid() == 0)) {
-    std::cerr << "Running CHFS as root opens unnacceptable security holes"
-              << std::endl;
+    std::cerr << "Running CHFS as root opens unnacceptable security holes" << std::endl;
     usage();
     abort();
     exit(-1);
@@ -524,7 +490,7 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
   // prepare the fuse parameters
 #ifdef __APPLE__
   fuse_argv[fuse_argc++] = "-o";
-  fuse_argv[fuse_argc++] = "nolocalcaches"; // no dir entry caching
+  fuse_argv[fuse_argc++] = "nolocalcaches";  // no dir entry caching
   fuse_argv[fuse_argc++] = "-o";
   fuse_argv[fuse_argc++] = "daemon_timeout=86400";
 #endif
@@ -534,8 +500,7 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
   fuse_args args = FUSE_ARGS_INIT(fuse_argc, (char **)fuse_argv);
   int foreground;
 
-  int res =
-      fuse_parse_cmdline(&args, &mountpoint, 0 /*multithreaded*/, &foreground);
+  int res = fuse_parse_cmdline(&args, &mountpoint, 0 /*multithreaded*/, &foreground);
 
   if (res == -1) {
     std::cerr << "fuse_parse_cmdline failed\n";
@@ -549,8 +514,7 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
   }
 
   // 2. prepare the filesystem handler
-  auto bm = std::shared_ptr<BlockManager>(
-      new BlockManager(kDiskSize / KBlockSize, KBlockSize));
+  auto bm = std::shared_ptr<BlockManager>(new BlockManager(kDiskSize / KBlockSize, KBlockSize));
   auto fs = new FileOperation(bm, KMaxInodeNum);
   {
     // pre-initialize
@@ -562,8 +526,7 @@ auto bootstrap_fuse(int argc, char **argv) -> int {
     CHFS_ASSERT(res.unwrap() == 1, "The allocated inode number is incorrect ");
   }
 
-  auto se =
-      fuse_lowlevel_new(&args, &fuseserver_oper, sizeof(fuseserver_oper), fs);
+  auto se = fuse_lowlevel_new(&args, &fuseserver_oper, sizeof(fuseserver_oper), fs);
   if (se == 0) {
     std::cerr << "fuse_lowlevel_new failed\n";
     exit(1);
@@ -629,7 +592,7 @@ void chfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name) {
   fuse_reply_err(req, ENOENT);
 }
 
-} // namespace chfs
+}  // namespace chfs
 
 /**
  * Usage:

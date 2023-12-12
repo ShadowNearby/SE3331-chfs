@@ -27,4 +27,4 @@ const u64 kDiskSize = 1024 * 1024 * 16;
 
 const usize KMaxInodeNum = 1024;
 
-} // namespace chfs
+}  // namespace chfs

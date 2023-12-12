@@ -16,7 +16,7 @@ namespace chfs {
 class Logger {
   FILE *logfile;
 
-public:
+ public:
   Logger(const std::string &filename) {
     this->logfile = fopen(filename.c_str(), "w");
     if (this->logfile == nullptr) {
@@ -30,7 +30,7 @@ public:
   Logger &operator<<(const char *msg) {
     if (this->logfile != nullptr) {
       std::fprintf(this->logfile, "%s\n", msg);
-      std::fflush(this->logfile); // Ensure the log is written immediately
+      std::fflush(this->logfile);  // Ensure the log is written immediately
     }
     return *this;
   }
@@ -38,16 +38,17 @@ public:
   Logger &operator<<(const std::string &msg) {
     if (this->logfile != nullptr) {
       std::fprintf(this->logfile, "%s\n", msg.c_str());
-      std::fflush(this->logfile); // Ensure the log is written immediately
+      std::fflush(this->logfile);  // Ensure the log is written immediately
     }
     return *this;
   }
 
   // Overload the << operator for log messages
-  template <typename T> Logger &operator<<(const T &msg) {
+  template <typename T>
+  Logger &operator<<(const T &msg) {
     if (this->logfile != nullptr) {
       std::fprintf(this->logfile, "%s\n", std::to_string(msg).c_str());
-      std::fflush(this->logfile); // Ensure the log is written immediately
+      std::fflush(this->logfile);  // Ensure the log is written immediately
     }
     return *this;
   }
@@ -57,18 +58,17 @@ public:
   void close() {}
 };
 
-extern Logger logger; // Declaration of the global logger instance
+extern Logger logger;  // Declaration of the global logger instance
 
 #ifdef UNIMPLEMENTED
 #undef UNIMPLEMENTED
 #endif
 
-#define UNIMPLEMENTED()                                                        \
-  do {                                                                         \
-    ::chfs::logger << "Unimplemented function of chfs: "                       \
-                   << __PRETTY_FUNCTION__ << " at " << __FILE__ << ":"         \
-                   << __LINE__ << "\n";                                        \
-    std::abort();                                                              \
+#define UNIMPLEMENTED()                                                                                      \
+  do {                                                                                                       \
+    ::chfs::logger << "Unimplemented function of chfs: " << __PRETTY_FUNCTION__ << " at " << __FILE__ << ":" \
+                   << __LINE__ << "\n";                                                                      \
+    std::abort();                                                                                            \
   } while (0)
 
-} // namespace chfs
+}  // namespace chfs

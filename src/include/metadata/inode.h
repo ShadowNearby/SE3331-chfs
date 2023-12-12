@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include <iterator>
 #include <string.h>
 #include <time.h>
+#include <iterator>
 
 #include "common/config.h"
 #include "common/macros.h"
@@ -42,7 +42,7 @@ class FileOperation;
 class FileAttr {
   friend class Inode;
 
-public:
+ public:
   u64 atime = 0;
   u64 mtime = 0;
   u64 ctime = 0;
@@ -88,17 +88,18 @@ class Inode {
   u32 nblocks;
   // The actual number of blocks should be larger,
   // which is dynamically calculated based on the block size
-public:
+
+ public:
+  u32 current_block_idx{0};
   [[maybe_unused]] block_id_t blocks[0];
 
-public:
+ public:
   /**
    * Create a new inode for a file or directory
    * @param type: the inode type
    * @param block_size: the size of the block that stored the inode
    */
-  Inode(InodeType type, usize block_size)
-      : type(type), inner_attr(), block_size(block_size) {
+  Inode(InodeType type, usize block_size) : type(type), inner_attr(), block_size(block_size) {
     CHFS_VERIFY(block_size > sizeof(Inode), "Block size too small");
     nblocks = (block_size - sizeof(Inode)) / sizeof(block_id_t);
     inner_attr.set_all_time(time(0));
@@ -140,10 +141,8 @@ public:
    */
   auto max_file_sz_supported() const -> u64 {
     const auto max_blocks_in_block = block_size / sizeof(block_id_t);
-    return static_cast<u64>(max_blocks_in_block) *
-               static_cast<u64>(block_size) +
-           static_cast<u64>(this->get_nblocks() - 1) *
-               static_cast<u64>(block_size);
+    return static_cast<u64>(max_blocks_in_block) * static_cast<u64>(block_size) +
+           static_cast<u64>(this->get_nblocks() - 1) * static_cast<u64>(block_size);
   }
 
   /**
@@ -168,8 +167,7 @@ public:
    *
    * @param bm the block manager
    */
-  auto write_indirect_block(std::shared_ptr<BlockManager> &bm,
-                            std::vector<u8> &buffer) -> ChfsNullResult;
+  auto write_indirect_block(std::shared_ptr<BlockManager> &bm, std::vector<u8> &buffer) -> ChfsNullResult;
 
   /**
    * Set the direct block ID given an index
@@ -186,8 +184,7 @@ public:
    * ```
    */
   block_id_t &operator[](size_t index) {
-    if (index >= this->nblocks)
-      throw std::out_of_range("Index out of range");
+    if (index >= this->nblocks) throw std::out_of_range("Index out of range");
     return this->blocks[index];
   }
 
@@ -200,8 +197,7 @@ public:
    *
    * @param allocator the block allocator
    */
-  auto get_or_insert_indirect_block(std::shared_ptr<BlockAllocator> &allocator)
-      -> ChfsResult<block_id_t> {
+  auto get_or_insert_indirect_block(std::shared_ptr<BlockAllocator> &allocator) -> ChfsResult<block_id_t> {
     if (this->blocks[this->nblocks - 1] == KInvalidBlockID) {
       // aha, we need to allocate one
       auto bid = allocator->allocate();
@@ -214,22 +210,18 @@ public:
   }
 
   auto get_indirect_block_id() -> block_id_t {
-    CHFS_ASSERT(this->blocks[this->nblocks - 1] != KInvalidBlockID,
-                "Indirect block not set");
+    CHFS_ASSERT(this->blocks[this->nblocks - 1] != KInvalidBlockID, "Indirect block not set");
     return this->blocks[this->nblocks - 1];
   }
 
-  auto invalid_indirect_block_id() {
-    this->blocks[this->nblocks - 1] = KInvalidBlockID;
-  }
+  auto invalid_indirect_block_id() { this->blocks[this->nblocks - 1] = KInvalidBlockID; }
 
   auto begin() -> InodeIterator;
   auto end() -> InodeIterator;
 
 } __attribute__((packed));
 
-static_assert(sizeof(Inode) == sizeof(FileAttr) + sizeof(InodeType) +
-                                   sizeof(u32) + sizeof(u32),
+static_assert(sizeof(Inode) == sizeof(FileAttr) + sizeof(InodeType) + sizeof(u32) + sizeof(u32) + sizeof(u32),
               "Unexpected Inode size");
 
 /**
@@ -249,7 +241,7 @@ class InodeIterator {
 
   InodeIterator(Inode *inode) : InodeIterator(inode, 0) {}
 
-public:
+ public:
   InodeIterator &operator++() {
     cur_idx++;
     return *this;
@@ -261,13 +253,9 @@ public:
     return tmp;
   }
 
-  bool operator==(const InodeIterator &rhs) const {
-    return cur_idx == rhs.cur_idx;
-  }
-  bool operator!=(const InodeIterator &rhs) const {
-    return cur_idx != rhs.cur_idx;
-  }
+  bool operator==(const InodeIterator &rhs) const { return cur_idx == rhs.cur_idx; }
+  bool operator!=(const InodeIterator &rhs) const { return cur_idx != rhs.cur_idx; }
   block_id_t &operator*() const { return inode->blocks[cur_idx]; }
 };
 
-} // namespace chfs
+}  // namespace chfs

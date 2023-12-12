@@ -1,7 +1,7 @@
-#include "distributed/dataserver.h"
-#include "./consts.h"
-#include <thread>
 #include <chrono>
+#include <thread>
+#include "./consts.h"
+#include "distributed/dataserver.h"
 
 auto main(int argc, char **argv) -> int {
   using namespace chfs;
@@ -12,6 +12,6 @@ auto main(int argc, char **argv) -> int {
 
   // Sleep here forever
   while (true) {
-     std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 }

@@ -43,7 +43,7 @@ class SuperBlock {
   std::shared_ptr<BlockManager> bm;
   SuperBlockInternal inner;
 
-public:
+ public:
   /**
    * Constructor
    * Note that this constructor is called upon the first time the filesystem is
@@ -62,13 +62,11 @@ public:
    * @param bm the block manager
    * @param id the block id of the super block
    */
-  static auto create_from_existing(std::shared_ptr<BlockManager> bm,
-                                   block_id_t id)
+  static auto create_from_existing(std::shared_ptr<BlockManager> bm, block_id_t id)
       -> ChfsResult<std::shared_ptr<SuperBlock>>;
 
   auto flush(block_id_t id) const -> ChfsNullResult {
-    return bm->write_partial_block(id, (u8 *)&inner, 0,
-                                   sizeof(SuperBlockInternal));
+    return bm->write_partial_block(id, (u8 *)&inner, 0, sizeof(SuperBlockInternal));
   }
 
   /**
@@ -79,8 +77,8 @@ public:
   u64 get_nblocks() const { return inner.nblocks; }
   u64 get_ninodes() const { return inner.ninodes; }
 
-private:
+ private:
   explicit SuperBlock(std::shared_ptr<BlockManager> bm) : bm(bm) {}
 };
 
-} // namespace chfs
+}  // namespace chfs

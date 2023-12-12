@@ -1,20 +1,18 @@
 #include "distributed/dataserver.h"
-#include "librpc/client.h"
-#include "gtest/gtest.h"
 #include <fstream>
+#include "gtest/gtest.h"
+#include "librpc/client.h"
 
 namespace chfs {
 
 class DataServerTest : public ::testing::Test {
-protected:
+ protected:
   const std::string data_path = "/tmp/test_file";
   std::shared_ptr<DataServer> data_srv;
   const u16 port = 8080;
 
   // This function is called before every test.
-  void SetUp() override {
-    data_srv = std::make_shared<DataServer>(port, data_path);
-  }
+  void SetUp() override { data_srv = std::make_shared<DataServer>(port, data_path); }
 
   // This function is called after every test.
   void TearDown() override {
@@ -36,9 +34,8 @@ TEST_F(DataServerTest, AllocateAndDelete) {
   // Try to allocate a block
   auto res = cli->call("alloc_block");
   EXPECT_EQ(res.is_err(), false);
-  auto [block_id, version] =
-      res.unwrap()->as<std::pair<block_id_t, version_t>>();
-  EXPECT_GT(block_id, 0); // The first one should be version map
+  auto [block_id, version] = res.unwrap()->as<std::pair<block_id_t, version_t>>();
+  EXPECT_GT(block_id, 0);  // The first one should be version map
   EXPECT_EQ(version, 1);
 
   // Then delete this one and reallocate
@@ -48,8 +45,7 @@ TEST_F(DataServerTest, AllocateAndDelete) {
 
   res = cli->call("alloc_block");
   EXPECT_EQ(res.is_err(), false);
-  auto [realloc_id, new_version] =
-      res.unwrap()->as<std::pair<block_id_t, version_t>>();
+  auto [realloc_id, new_version] = res.unwrap()->as<std::pair<block_id_t, version_t>>();
   EXPECT_EQ(block_id, realloc_id);
   EXPECT_EQ(new_version, 3);
 }
@@ -61,8 +57,7 @@ TEST_F(DataServerTest, ReadAndWrite) {
   // Try to allocate a block
   auto res = cli->call("alloc_block");
   EXPECT_EQ(res.is_err(), false);
-  auto [block_id, version] =
-      res.unwrap()->as<std::pair<block_id_t, version_t>>();
+  auto [block_id, version] = res.unwrap()->as<std::pair<block_id_t, version_t>>();
   EXPECT_GT(block_id, 0);
 
   // At first read 8 bytes somewhere inner the block
@@ -87,4 +82,4 @@ TEST_F(DataServerTest, ReadAndWrite) {
   EXPECT_EQ(buffer, input);
 }
 
-} // namespace chfs
+}  // namespace chfs

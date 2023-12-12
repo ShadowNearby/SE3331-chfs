@@ -1,5 +1,5 @@
-#include "common/macros.h"
 #include "metadata/superblock.h"
+#include "common/macros.h"
 #include "gtest/gtest.h"
 
 #include <cstring>
@@ -7,7 +7,7 @@
 namespace chfs {
 
 class SuperblockTest : public ::testing::Test {
-protected:
+ protected:
   static std::shared_ptr<BlockAllocator> allocator;
   static std::shared_ptr<BlockManager> bm;
   // This function is called before every test.
@@ -44,4 +44,4 @@ TEST_F(SuperblockTest, CreateFromZero) {
   ASSERT_EQ(superblock1->get_ninodes(), 1024);
 }
 
-} // namespace chfs
+}  // namespace chfs
