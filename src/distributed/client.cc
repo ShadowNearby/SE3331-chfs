@@ -144,7 +144,6 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data) -
     return ChfsNullResult{block_map_call.unwrap_error()};
   }
   auto block_maps = block_map_call.unwrap()->as<std::vector<BlockInfo>>();
-  LOG_FORMAT_INFO("block map size {}", block_maps.size());
   auto write_loop = [&](block_id_t block_id, mac_id_t mac_id) {
     if (DiskBlockSize - offset > data.size()) {
       auto data_call = data_servers_[mac_id]->call("write_data", block_id, offset, data);
@@ -184,7 +183,6 @@ auto ChfsClient::write_file(inode_id_t id, usize offset, std::vector<u8> data) -
     if (alloc_call.is_err()) {
       return ChfsNullResult{alloc_call.unwrap_error()};
     }
-    LOG_FORMAT_INFO("offset {} data size {}", offset, data.size());
     if (offset > DiskBlockSize) {
       offset -= DiskBlockSize;
       continue;
