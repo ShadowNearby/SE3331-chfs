@@ -24,6 +24,7 @@ Worker::Worker(MR_CoordinatorConfig config) {
 
 void Worker::doMap(int index, const std::string &filename) {
   // Lab4: Your code goes here.
+  chfs_client->lookup(1, filename);
 }
 
 void Worker::doReduce(int index, int nfiles) {

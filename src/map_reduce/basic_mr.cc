@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include "common/logger.h"
 #include "map_reduce/protocol.h"
 
 namespace mapReduce {
@@ -14,10 +16,43 @@ namespace mapReduce {
 // and look only at the contents argument. The return value is a slice
 // of key/value pairs.
 //
+bool CharMatch(const char ch) {
+  if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+    return true;
+  }
+  return false;
+}
+
 std::vector<KeyVal> Map(const std::string &content) {
   // Your code goes here
   // Hints: split contents into an array of words.
+
+  // transform to punctuation-free words.
+  auto punctuation_free_content = std::string();
+  punctuation_free_content.resize(content.size());
+  std::transform(content.begin(), content.end(), punctuation_free_content.begin(), [](const char ch) {
+    if (CharMatch(ch)) {
+      return ch;
+    }
+    return ' ';
+  });
+  while (!CharMatch(punctuation_free_content.back())) {
+    punctuation_free_content.pop_back();
+  }
+  // count words
+  auto ss = std::stringstream(punctuation_free_content);
+  auto word = std::string();
+  auto count_map = std::map<std::string, int>{};
+  while (!ss.eof()) {
+    ss >> word;
+    count_map[word]++;
+  }
+  // prepare return value
   std::vector<KeyVal> ret;
+  ret.reserve(count_map.size());
+  for (const auto &[key, count] : count_map) {
+    ret.emplace_back(key, std::to_string(count));
+  }
   return ret;
 }
 
@@ -29,7 +64,11 @@ std::vector<KeyVal> Map(const std::string &content) {
 std::string Reduce(const std::string &key, const std::vector<std::string> &values) {
   // Your code goes here
   // Hints: return the number of occurrences of the word.
-  std::string ret = "0";
-  return ret;
+  //  std::string ret = "0";
+  int count = 0;
+  for (const auto &value : values) {
+    count += std::stoi(value);
+  }
+  return std::to_string(count);
 }
 }  // namespace mapReduce

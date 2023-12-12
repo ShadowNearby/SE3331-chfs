@@ -93,7 +93,7 @@ auto ChfsClient::get_type_attr(inode_id_t id) -> ChfsResult<std::pair<InodeType,
     auto block_maps = block_result.unwrap()->as<std::vector<BlockInfo>>();
     file_size = block_maps.size() * DiskBlockSize;
   }
-  LOG_FORMAT_INFO("file size {} type {}", file_size, (u8)inode_type);
+  //  LOG_FORMAT_INFO("file size {} type {}", file_size, (u8)inode_type);
   return ChfsResult<std::pair<InodeType, FileAttr>>{
       std::make_pair(inode_type, FileAttr{std::get<1>(res), std::get<2>(res), std::get<3>(res), file_size})};
 }
