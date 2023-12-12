@@ -23,11 +23,7 @@ bool CharMatch(const char ch) {
   return false;
 }
 
-std::vector<KeyVal> Map(const std::string &content) {
-  // Your code goes here
-  // Hints: split contents into an array of words.
-
-  // transform to punctuation-free words.
+std::map<std::string, int> CountMap(const std::string &content) {
   auto punctuation_free_content = std::string();
   punctuation_free_content.resize(content.size());
   std::transform(content.begin(), content.end(), punctuation_free_content.begin(), [](const char ch) {
@@ -47,6 +43,40 @@ std::vector<KeyVal> Map(const std::string &content) {
     ss >> word;
     count_map[word]++;
   }
+  return count_map;
+}
+
+std::vector<uint8_t> SerializeCountMap(const std::map<std::string, int> &count_map) {
+  std::stringstream ss;
+  for (const auto &[key, value] : count_map) {
+    ss << key << " " << value << "\n";
+  }
+  std::string content = ss.str();
+  return std::vector<uint8_t>{content.begin(), content.end()};
+}
+
+void DeserializeCountMap(const std::vector<uint8_t> &content, std::map<std::string, int> &count_map) {
+  std::string str_content(content.begin(), content.end());
+  std::stringstream ss(str_content);
+  std::string word;
+  int count;
+  while (!ss.eof()) {
+    ss >> word >> count;
+    if (word.front() == '\0') {
+      continue;
+    }
+    count_map[word] += count;
+
+    //    LOG_FORMAT_INFO("{} {}", word, count_map[word]);
+  }
+}
+
+std::vector<KeyVal> Map(const std::string &content) {
+  // Your code goes here
+  // Hints: split contents into an array of words.
+
+  // transform to punctuation-free words.
+  auto count_map = CountMap(content);
   // prepare return value
   std::vector<KeyVal> ret;
   ret.reserve(count_map.size());

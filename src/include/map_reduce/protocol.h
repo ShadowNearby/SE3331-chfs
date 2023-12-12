@@ -1,3 +1,4 @@
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -51,7 +52,7 @@ class SequentialMapReduce {
 class Coordinator {
  public:
   Coordinator(MR_CoordinatorConfig config, const std::vector<std::string> &files, int nReduce);
-  std::tuple<int, int> askTask(int);
+  std::tuple<int, int, std::string> askTask(int);
   int submitTask(int taskType, int index);
   bool Done();
 
@@ -60,6 +61,10 @@ class Coordinator {
   std::mutex mtx;
   bool isFinished;
   std::unique_ptr<chfs::RpcServer> rpc_server;
+  std::vector<int> map_task;
+  int finished_map_task{0};
+  std::vector<int> reduce_task;
+  //  int n_reduce{};
 };
 
 class Worker {
@@ -79,4 +84,8 @@ class Worker {
   std::unique_ptr<std::thread> work_thread;
   bool shouldStop = false;
 };
+bool CharMatch(char ch);
+std::map<std::string, int> CountMap(const std::string &content);
+std::vector<uint8_t> SerializeCountMap(const std::map<std::string, int> &count_map);
+void DeserializeCountMap(const std::vector<uint8_t> &content, std::map<std::string, int> &count_map);
 }  // namespace mapReduce

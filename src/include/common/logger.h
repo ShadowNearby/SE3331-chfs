@@ -37,9 +37,7 @@
 #include <string>
 #include "fmt/core.h"
 
-namespace chfs {
-
-#define NONE "\033[m"
+// #define NONE "\033[m"
 #define RED "\033[0;32;31m"
 #define LIGHT_RED "\033[1;31m"
 #define GREEN "\033[0;32;32m"
@@ -209,7 +207,5 @@ inline void OutputLogHeader(const char *file, int line, const char *func, int le
   // PAVLO: DO NOT CHANGE THIS
   ::fprintf(LOG_OUTPUT_STREAM, "%s [%s:%d:%s] %s - ", time_str, file, line, func, type);
 }
-
-}  // namespace chfs
 
 #endif
