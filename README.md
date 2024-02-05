@@ -2,6 +2,7 @@
 
 实现一个基于inode的文件系统
 ![overall-arch](./docs/lab1/lab1_1.png)
+
 文件系统由三个层次组成：block层、inode层和filesystem层。
 
 block层实现了一个块设备，提供了用于alloc/dealloc block、从block读取/写入数据的API。
@@ -45,6 +46,7 @@ block也在这一层，记录了文件系统的一些关键信息。
 
 实现了类似GFS的Distributed Filesystem
 ![overall-arch](./docs/lab2/lab2-1.png)
+
 文件系统由三个组件组成：**filesystem client**, **metadata server**, and **data server**
 
 一个文件被分割成一个或多个块，这些块被存储在一组数据服务器上。文件系统负责处理来自文件系统客户端的读写请求，以及来自元数据服务器的块创建和删除等指令。
